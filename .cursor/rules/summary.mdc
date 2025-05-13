@@ -1,0 +1,18 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Executive Summary: AI-Generated Infographic Feature with Layout Control
+
+This feature introduces an AI-powered infographic generator into our Next.js application. Users can describe a topic and select a preferred layout style (timeline, bar chart, comparison grid, etc.), and the system generates a high-quality infographic using OpenAI’s DALL·E 3 Image API.
+
+Unlike typical AI image generation tools, this implementation gives users a degree of structural control through a “Layout Selector.” This ensures that visual outputs are not just creative, but also purposeful and data-aligned.
+
+Key Benefits:
+- Layout customization makes infographic generation more relevant and data-accurate.
+- Non-designers can now produce content with clarity and visual structure.
+- Infographics become shareable, branded assets for reports, dashboards, or social media.
+- Encourages engagement by simplifying how data and concepts are visualized.
+
+The feature combines the power of generative AI with practical UX controls, moving us closer to AI-enhanced no-code content creation.

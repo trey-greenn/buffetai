@@ -1,19 +1,67 @@
 import React, { useState } from 'react';
-import { Image, Download } from 'lucide-react';
+import { Image, Download, LayoutTemplate } from 'lucide-react';
+
+// Define layout types and their descriptions
+const layoutOptions = [
+  { 
+    id: 'timeline', 
+    name: 'Timeline', 
+    description: 'Sequential events or history',
+    promptTemplate: 'Create a clear timeline infographic about "{topic}" with chronological events, dates, and icons. Use a horizontal layout with connecting elements between events. Include a title at the top and use a clean, modern design with a cohesive color scheme.'
+  },
+  { 
+    id: 'comparison', 
+    name: 'Comparison', 
+    description: 'Compare multiple items side by side',
+    promptTemplate: 'Create a side-by-side comparison infographic about "{topic}" with two clearly labeled columns. Use icons, data points, and short text descriptions to highlight key differences. Include a title at the top and use contrasting colors to distinguish between the compared items.'
+  },
+  { 
+    id: 'chart', 
+    name: 'Bar Chart', 
+    description: 'Visualize data with bars',
+    promptTemplate: 'Create a bar chart infographic about "{topic}" with clearly labeled axes, values, and bars. Use a title at the top, include a legend if needed, and add brief annotations explaining key insights. Use a clean design with consistent colors for data representation.'
+  },
+  { 
+    id: 'flowchart', 
+    name: 'Flowchart', 
+    description: 'Show processes or decisions',
+    promptTemplate: 'Create a flowchart infographic about "{topic}" with connected nodes showing a step-by-step process. Use different shapes for different types of steps, include directional arrows, and add concise text in each node. Include a title and a clear starting and ending point.'
+  }
+];
 
 const InfographicGenerator: React.FC = () => {
   // State for infographic generator
-  const [thumbnailPrompt, setThumbnailPrompt] = useState('');
+  const [topic, setTopic] = useState('');
+  const [selectedLayout, setSelectedLayout] = useState(layoutOptions[0].id);
   const [thumbnailSize, setThumbnailSize] = useState('1024x1024');
   const [thumbnailStyle, setThumbnailStyle] = useState('natural');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState('');
 
+  // Get the selected layout object
+  // const getSelectedLayoutOption = () => {
+  //   return layoutOptions.find(option => option.id === selectedLayout) || layoutOptions[0];
+  // };
+
+  // Generate the prompt based on topic and selected layout
+  const generatePrompt = (topic: string, layoutId: string) => {
+    const layoutOption = layoutOptions.find(option => option.id === layoutId) || layoutOptions[0];
+    return layoutOption.promptTemplate.replace('{topic}', topic);
+  };
+
   const handleThumbnailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!topic.trim()) {
+      alert('Please enter a topic for your infographic');
+      return;
+    }
+    
     setIsGenerating(true);
     
     try {
+      const finalPrompt = generatePrompt(topic, selectedLayout);
+      
       // Call the OpenAI API to generate an image
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
@@ -23,7 +71,7 @@ const InfographicGenerator: React.FC = () => {
         },
         body: JSON.stringify({
           model: "dall-e-3",
-          prompt: thumbnailPrompt,
+          prompt: finalPrompt,
           n: 1,
           size: thumbnailSize,
           quality: "standard",
@@ -68,7 +116,7 @@ const InfographicGenerator: React.FC = () => {
       // Create a temporary link element
       const link = document.createElement('a');
       link.href = blobUrl;
-      link.download = `infographic-${Date.now()}.png`; // Generate a unique filename
+      link.download = `infographic-${selectedLayout}-${Date.now()}.png`; // Generate a unique filename
       
       // Append to the document, click it, and remove it
       document.body.appendChild(link);
@@ -97,20 +145,44 @@ const InfographicGenerator: React.FC = () => {
       
       <div className="bg-white rounded-lg shadow-lg p-8 border-l-4 border-green-500">
         <form onSubmit={handleThumbnailSubmit}>
-          {/* Infographic Prompt */}
+          {/* Topic Input */}
           <div className="mb-6">
-            <label htmlFor="thumbnail-prompt" className="block text-sm font-medium text-gray-700 mb-2">
-              Infographic Description
+            <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
+              Topic
             </label>
-            <textarea
-              id="thumbnail-prompt"
-              value={thumbnailPrompt}
-              onChange={(e) => setThumbnailPrompt(e.target.value)}
+            <input
+              id="topic"
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
               className="block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
-              rows={3}
-              placeholder="Describe the infographic you want to generate (e.g., 'A futuristic cityscape with flying cars and neon lights')"
+              placeholder="Enter the topic for your infographic (e.g., 'Climate Change Impact', 'Vaccination Benefits')"
               required
             />
+          </div>
+          
+          {/* Layout Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              Layout Type
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              {layoutOptions.map((layout) => (
+                <div 
+                  key={layout.id}
+                  onClick={() => setSelectedLayout(layout.id)}
+                  className={`cursor-pointer border rounded-md p-3 flex flex-col items-center text-center transition-colors ${
+                    selectedLayout === layout.id 
+                      ? 'border-green-500 bg-green-50' 
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <LayoutTemplate className={`h-8 w-8 mb-1 ${selectedLayout === layout.id ? 'text-green-500' : 'text-gray-400'}`} />
+                  <span className="font-medium">{layout.name}</span>
+                  <span className="text-xs text-gray-500 mt-1">{layout.description}</span>
+                </div>
+              ))}
+            </div>
           </div>
           
           {/* Infographic Options */}
