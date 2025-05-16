@@ -1,0 +1,204 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Automated Newsletter System - Technical Blueprint
+
+## 1. System Overview
+
+The automated newsletter system will allow users to configure custom newsletters with multiple topic sections, set delivery frequencies, and receive personalized content on schedule. The system will handle content scraping/collection, newsletter generation, and scheduled delivery.
+
+## 2. Architecture Components
+
+### 2.1 Frontend (Next.js)
+- User authentication and profile management
+- Newsletter configuration interface
+- Newsletter preview functionality
+- Subscription management dashboard
+
+### 2.2 Backend API (Node.js/Express or Next.js API Routes)
+- User authentication and management
+- Newsletter configuration storage and retrieval
+- Content collection orchestration
+- Newsletter generation
+- Email delivery management
+
+### 2.3 Content Collection Service
+- Web scraping modules
+- RSS feed integration
+- API integrations for various content sources
+- Content filtering and categorization
+
+### 2.4 Newsletter Generation Service
+- Content compilation based on user preferences
+- Template rendering
+- HTML email generation
+- Personalization logic
+
+### 2.5 Email Delivery Service
+- Email queuing system
+- Scheduled sending
+- Delivery tracking
+- Bounce/failure handling
+
+### 2.6 Database
+- User profiles and authentication
+- Newsletter configurations
+- Content cache/storage
+- Delivery logs and analytics
+
+## 3. Data Model
+
+### 3.1 User
+- id (UUID)
+- email
+- name
+- password (hashed)
+- created_at
+- updated_at
+
+### 3.2 NewsletterConfig
+- id (UUID)
+- user_id (foreign key)
+- name
+- created_at
+- updated_at
+
+### 3.3 NewsletterSection
+- id (UUID)
+- newsletter_id (foreign key)
+- topic
+- instructions
+- frequency
+- other_guidelines
+- position (ordering)
+- created_at
+- updated_at
+
+### 3.4 DeliveryLog
+- id (UUID)
+- newsletter_id (foreign key)
+- sent_at
+- status
+- error (optional)
+- open_tracking_id
+
+## 4. Implementation Plan
+
+### 4.1 User Configuration Storage
+1. Extend current NewsletterSection component to connect with backend API
+2. Add user authentication (NextAuth.js)
+3. Create API endpoints for saving/retrieving newsletter configurations
+4. Implement database schema and models
+
+### 4.2 Content Collection System
+1. Create modular scraping services for different content types:
+   - News API integration for general topics
+   - RSS feed parser for specific sources
+   - Web scraper for sources without APIs/feeds
+   - Social media API integrations for trending topics
+2. Implement content categorization using NLP/topic modeling
+3. Build content filtering based on user preferences
+4. Create content caching system to avoid redundant scraping
+
+### 4.3 Newsletter Generation
+1. Design flexible HTML email templates
+2. Implement template engine with section-based rendering
+3. Create content transformation pipeline:
+   - Content extraction
+   - Formatting based on user instructions
+   - Image processing
+   - Link handling
+4. Implement personalization logic
+
+### 4.4 Email Infrastructure
+1. Set up company domain for email sending
+2. Configure SPF, DKIM, and DMARC records
+3. Integrate with transactional email service (SendGrid, AWS SES, etc.)
+4. Implement email tracking and analytics
+
+### 4.5 Scheduling System
+1. Build scheduling service using cron jobs
+2. Implement frequency-based delivery logic
+3. Handle timezone considerations
+4. Create retry mechanism for failed deliveries
+
+## 5. Technical Stack
+
+### 5.1 Frontend
+- Next.js 14+ (App Router)
+- TypeScript
+- React Server Components
+- Tailwind CSS
+- Shadcn UI / Radix UI
+- React Hook Form with Zod validation
+- TanStack Query for data fetching
+
+### 5.2 Backend
+- Next.js API Routes or Express.js
+- Prisma ORM
+- PostgreSQL
+- NextAuth.js for authentication
+- Bull/Bull MQ for job queuing
+- Node-cron for scheduling
+
+### 5.3 Content Collection
+- Cheerio/Puppeteer for web scraping
+- RSS Parser
+- News API client
+- NLP libraries (natural, compromise)
+
+### 5.4 Email
+- Nodemailer
+- SendGrid/AWS SES/Resend
+- MJML for responsive email templates
+
+### 5.5 DevOps
+- Docker for containerization
+- CI/CD pipeline
+- Monitoring and logging (Sentry, LogRocket)
+- AWS/Vercel for hosting
+
+## 6. Security Considerations
+- Input sanitization for all user inputs
+- Rate limiting for API endpoints
+- Content sanitization before email generation
+- Secure storage of API keys and credentials
+- Regular security audits
+
+## 7. Scalability Considerations
+- Microservice architecture for independent scaling
+- Queue-based architecture for handling spikes
+- Caching strategies for content and rendered newsletters
+- Horizontal scaling of worker processes
+- Database sharding for large user bases
+
+## 8. Performance Optimization
+- Implement background processing for content collection
+- Use worker threads for CPU-intensive tasks
+- Optimize database queries with proper indexing
+- Implement caching at multiple layers
+- Lazy loading of content and images
+
+## 9. Testing Strategy
+- Unit tests for core business logic
+- Integration tests for API endpoints
+- E2E tests for critical user flows
+- Load testing for scalability verification
+- Security testing (OWASP top 10)
+
+## 10. Monitoring and Analytics
+- Email delivery success rates
+- Open and click rates
+- Content relevance feedback
+- System performance metrics
+- Error tracking and alerting
+
+## 11. Implementation Timeline
+1. Phase 1: User configuration and storage (2 weeks)
+2. Phase 2: Content collection system (3 weeks)
+3. Phase 3: Newsletter generation (2 weeks)
+4. Phase 4: Email delivery system (2 weeks)
+5. Phase 5: Scheduling and automation (1 week)
+6. Phase 6: Testing and optimization (2 weeks)

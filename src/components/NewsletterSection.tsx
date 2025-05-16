@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Settings, Send } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Settings, Save, Mail } from 'lucide-react';
+import { supabase } from '../lib/supabase/client';
+import { useAuth } from '../lib/supabase/auth-context';
+import { Link } from 'react-router-dom';
 
 interface NewsletterSectionData {
   id: string;
@@ -10,6 +13,7 @@ interface NewsletterSectionData {
 }
 
 const NewsletterSection: React.FC = () => {
+  const { user } = useAuth();
   const [sections, setSections] = useState<NewsletterSectionData[]>([
     {
       id: '1',
@@ -19,6 +23,36 @@ const NewsletterSection: React.FC = () => {
       other: '',
     },
   ]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+
+  // Fetch user's saved sections on component mount
+  useEffect(() => {
+    if (user) {
+      fetchSavedSections();
+    }
+  }, [user]);
+
+  const fetchSavedSections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('newsletter_sections')
+        .select('section_data')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching sections:', error);
+        return;
+      }
+
+      if (data && data.section_data) {
+        setSections(data.section_data);
+      }
+    } catch (error) {
+      console.error('Error fetching sections:', error);
+    }
+  };
 
   const predefinedTopics = [
     'Technology',
@@ -67,11 +101,57 @@ const NewsletterSection: React.FC = () => {
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const saveSections = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Newsletter configuration:', sections);
-    // Here you would typically send this data to your backend
-    alert('Newsletter created successfully!');
+    
+    if (!user) {
+      setSaveMessage('Please sign in to save your newsletter settings');
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveMessage('');
+
+    try {
+      // Check if record exists
+      const { data: existingData } = await supabase
+        .from('newsletter_sections')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+      
+      let result;
+      
+      if (existingData) {
+        // Update existing record
+        result = await supabase
+          .from('newsletter_sections')
+          .update({
+            section_data: sections,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Insert new record
+        result = await supabase
+          .from('newsletter_sections')
+          .insert({
+            user_id: user.id,
+            section_data: sections,
+            updated_at: new Date().toISOString()
+          });
+      }
+      
+      if (result.error) throw result.error;
+      
+      setSaveMessage('Newsletter settings saved successfully!');
+      setTimeout(() => setSaveMessage(''), 3000);
+    } catch (error: any) {
+      console.error('Error saving settings:', error);
+      setSaveMessage(`Error saving newsletter settings: ${error.message || 'Unknown error'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -85,7 +165,7 @@ const NewsletterSection: React.FC = () => {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={saveSections}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center">
             <Settings className="mr-2 h-6 w-6" />
@@ -189,14 +269,47 @@ const NewsletterSection: React.FC = () => {
           </div>
         ))}
 
+        {saveMessage && (
+          <div className={`mt-4 p-2 text-center text-sm rounded ${
+            saveMessage.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+          }`}>
+            {saveMessage}
+          </div>
+        )}
+
         <div className="mt-8 flex justify-end">
           <button
             type="submit"
+            disabled={isSaving}
             className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
           >
-            <Send className="mr-2 h-5 w-5" />
-            Create Newsletter
+            <Save className="mr-2 h-5 w-5" />
+            {isSaving ? 'Saving...' : 'Save Settings'}
           </button>
+        </div>
+
+        <div className="mt-4">
+          <a 
+            href="/newsletter-preview" 
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Select Content
+          </a>
+        </div>
+
+        <div className="mt-8 border-t pt-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-3">What's Next?</h3>
+          <p className="text-gray-600 mb-4">
+            Now that you've set up your newsletter preferences, you can start creating personalized newsletters.
+          </p>
+          <Link 
+            to="/newsletter-preview" 
+            className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700"
+          >
+            <Mail className="mr-2 h-5 w-5" />
+            Create Your Newsletter
+          </Link>
         </div>
       </form>
     </div>
