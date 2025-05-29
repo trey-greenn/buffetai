@@ -91,8 +91,12 @@ const ContentSelectionPanel: React.FC<ContentSelectionPanelProps> = ({
           continue;
         }
 
+        // If we have data, use it
         if (data && data.length > 0) {
           contentMap[topic] = data.map(item => ({ ...item, selected: false }));
+        } else {
+          // If no data found for this topic, provide mock content
+          contentMap[topic] = generateMockContent(topic, 3);
         }
       }
 
@@ -103,6 +107,27 @@ const ContentSelectionPanel: React.FC<ContentSelectionPanelProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper function to generate mock content when none is found
+  const generateMockContent = (topic: string, count: number): ContentItem[] => {
+    const mockItems: ContentItem[] = [];
+    
+    for (let i = 1; i <= count; i++) {
+      mockItems.push({
+        id: `mock-${topic}-${i}`,
+        topic: topic,
+        title: `Sample ${topic} Article ${i}`,
+        url: 'https://example.com',
+        source: 'Demo Source',
+        published_date: new Date().toISOString(),
+        content: `This is sample content for a ${topic} article. This is just placeholder text to demonstrate the newsletter functionality.`,
+        summary: `A brief summary about ${topic} and why it matters.`,
+        selected: false
+      });
+    }
+    
+    return mockItems;
   };
 
   const toggleItemSelection = (topic: string, itemId: string) => {

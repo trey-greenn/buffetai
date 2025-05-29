@@ -114,31 +114,79 @@ const NewsletterPreview: React.FC = () => {
         throw new Error('Could not find your email address');
       }
       
-      // Insert email record AND get the ID back
+      // Make sure we're authenticated
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData?.user) {
+        throw new Error('You need to be logged in to send newsletters');
+      }
+      
+      // Debug the user IDs
+      console.log('Auth user ID:', userData.user.id);
+      console.log('Context user ID:', user?.id);
+      console.log('User email:', userEmail);
+      
+      // Verify email preview content
+      if (!emailPreview || emailPreview.trim() === '') {
+        throw new Error('Newsletter content is empty. Please add content before sending.');
+      }
+      
+      // Check if we're using mock content
+      const hasMockContent = selectedItems.some(item => item.id.startsWith('mock-'));
+      
+      console.log('Preparing to save newsletter to database');
+      
+      // Insert with better error handling
       const { data, error: insertError } = await supabase
         .from('scheduled_emails')
         .insert({
-          user_id: user?.id,
+          user_id: userData.user.id, // Use the ID from auth.getUser()
           status: 'pending',
           scheduled_time: new Date().toISOString(),
-          content_ids: selectedItems.map(item => item.id),
-          email_content: emailPreview // Store the preview HTML
+          ...(hasMockContent ? {} : { content_ids: selectedItems.map(item => item.id) }),
+          email_content: emailPreview
         })
         .select('id')
         .single();
         
-      if (insertError || !data) {
+      if (insertError) {
+        console.error('Insert error details:', insertError);
+        if (insertError.code === '42501') {
+          throw new Error('Permission denied: You do not have access to create newsletters');
+        }
         throw new Error('Failed to schedule your newsletter');
       }
       
+      if (!data) {
+        throw new Error('No data returned from insert operation');
+      }
+      
+      console.log('Successfully created email record with ID:', data.id);
+      
       // Process the email immediately
-      await processScheduledEmail(data.id);
-      
-      setSuccess('Your newsletter has been sent! It will arrive in your inbox shortly.');
-      
-      setTimeout(() => {
-        navigate('/dashboard');
-      }, 3000);
+      console.log('Sending email...');
+      try {
+        const emailSent = await processScheduledEmail(data.id);
+        
+        if (!emailSent) {
+          throw new Error('Failed to send the email. Please check the console for details.');
+        }
+        
+        setSuccess('Your newsletter has been sent! It will arrive in your inbox shortly.');
+        
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
+      } catch (sendErr: any) {
+        // Get the detailed error message from the database
+        const { data: errorData } = await supabase
+          .from('scheduled_emails')
+          .select('error_message')
+          .eq('id', data.id)
+          .single();
+          
+        const errorMessage = errorData?.error_message || sendErr.message || 'Unknown error';
+        throw new Error(`Email sending failed: ${errorMessage}`);
+      }
     } catch (err: any) {
       console.error('Error sending newsletter:', err);
       setError(err.message || 'Failed to send newsletter. Please try again.');
@@ -158,14 +206,26 @@ const NewsletterPreview: React.FC = () => {
     setSuccess(null);
     
     try {
+      // Get the user data directly from supabase auth
+      const { data: userData } = await supabase.auth.getUser();
+      
+      // Debug the user IDs
+      console.log('Auth user ID (scheduler):', userData?.user?.id);
+      console.log('Context user ID (scheduler):', user?.id);
+      
+      // Check if we're using mock content
+      const hasMockContent = selectedItems.some(item => item.id.startsWith('mock-'));
+
       // Insert a new scheduled email with the selected date/time
       const { error: insertError } = await supabase
         .from('scheduled_emails')
         .insert({
-          user_id: user?.id,
+          user_id: userData?.user?.id, // Use the ID from auth.getUser()
           status: 'pending',
           scheduled_time: new Date(scheduledDate).toISOString(),
-          content_ids: selectedItems.map(item => item.id)
+          // Only include content_ids if not using mock content
+          ...(hasMockContent ? {} : { content_ids: selectedItems.map(item => item.id) }),
+          email_content: emailPreview // Store the preview HTML for mock content
         });
         
       if (insertError) {
