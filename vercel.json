@@ -19,6 +19,10 @@
         "dest": "server.cjs"
       },
       {
+        "src": "/site.webmanifest",
+        "dest": "/site.webmanifest"
+      },
+      {
         "src": "/assets/(.*)",
         "dest": "/assets/$1"
       },
