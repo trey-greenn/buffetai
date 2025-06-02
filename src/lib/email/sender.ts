@@ -95,7 +95,7 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
       throw new Error(`Failed to send email: ${error.message}`);
     }
     
-    console.log('Email sent with ID:', data?.id);
+    // console.log('Email sent with ID:', data?.id);
   } catch (error: any) {
     console.error('Error sending email via Resend:', error);
     throw error;

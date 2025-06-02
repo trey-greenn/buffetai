@@ -15,7 +15,7 @@ async function sendTestEmail() {
   const testEmail = process.argv[2] || 'w.treygreen@gmail.com';
 
   try {
-    console.log(`Sending test email to ${testEmail}...`);
+    // console.log(`Sending test email to ${testEmail}...`);
     const { data, error } = await resend.emails.send({
       from: 'Newsletter <info@williamtreygreen.com>',
       to: [testEmail],

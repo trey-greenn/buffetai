@@ -3,13 +3,13 @@ import { supabase } from '../supabase/client';
 // import { Resend } from 'resend';
 
 // Get Resend API key from environment variables
-const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
+// const resendApiKey = import.meta.env.VITE_RESEND_API_KEY;
 // const resend = new Resend(resendApiKey);
 
 export async function processScheduledEmail(emailId: string) {
   try {
-    console.log(`Processing email ID: ${emailId}`);
-    console.log(`Using Resend API key: ${resendApiKey ? 'Available' : 'Missing'}`);
+    // console.log(`Processing email ID: ${emailId}`);
+    // console.log(`Using Resend API key: ${resendApiKey ? 'Available' : 'Missing'}`);
     
     // Get the email data first without joining
     const { data: emailData, error: fetchError } = await supabase
@@ -23,12 +23,12 @@ export async function processScheduledEmail(emailId: string) {
       throw new Error('Email not found');
     }
     
-    console.log('Retrieved email data:', JSON.stringify({
-      id: emailData.id,
-      status: emailData.status,
-      user_id: emailData.user_id,
-      content_length: emailData.email_content?.length || 0
-    }));
+    // console.log('Retrieved email data:', JSON.stringify({
+    //   id: emailData.id,
+    //   status: emailData.status,
+    //   user_id: emailData.user_id,
+    //   content_length: emailData.email_content?.length || 0
+    // }));
     
     // Get email directly from auth user
     let finalEmail;
@@ -36,7 +36,7 @@ export async function processScheduledEmail(emailId: string) {
     
     if (currentUser?.user?.email) {
       finalEmail = currentUser.user.email;
-      console.log(`Using current user email: ${finalEmail}`);
+      // console.log(`Using current user email: ${finalEmail}`);
     } else {
       throw new Error('Could not determine recipient email address');
     }
@@ -47,15 +47,15 @@ export async function processScheduledEmail(emailId: string) {
     }
     
     // Send email using Resend
-    console.log(`Sending email to: ${finalEmail}`);
+    // console.log(`Sending email to: ${finalEmail}`);
     
     try {
       // Log full Resend config for debugging
-      console.log('Sending email via API:', {
-        to: finalEmail,
-        subject: 'Your Personalized Newsletter',
-        htmlLength: emailData.email_content.length
-      });
+      // console.log('Sending email via API:', {
+      //   to: finalEmail,
+      //   subject: 'Your Personalized Newsletter',
+      //   htmlLength: emailData.email_content.length
+      // });
       
       const apiUrl = import.meta.env.PROD 
   ? '/api/send-email'  // Relative URL for production
@@ -78,7 +78,7 @@ const response = await fetch(apiUrl, {
       }
 
       const result = await response.json();
-      console.log('Email sent successfully with ID:', result.data?.id);
+      // console.log('Email sent successfully with ID:', result.data?.id);
       
       // Update status
       const { error: updateError } = await supabase

@@ -75,7 +75,7 @@ async function scheduleEmail({ userId, scheduledTime, sectionIds }: {
   if (error) {
     console.error(`Error scheduling email for user ${userId}:`, error);
   } else {
-    console.log(`Scheduled email for user ${userId} at ${format(scheduledTime, 'yyyy-MM-dd HH:mm:ss')}`);
+    // console.log(`Scheduled email for user ${userId} at ${format(scheduledTime, 'yyyy-MM-dd HH:mm:ss')}`);
   }
 }
 

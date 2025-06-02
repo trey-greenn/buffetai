@@ -1,0 +1,6 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+In our Newsletter Selection, where the user is granted to option to, 'Content Selection', we are currently using static data to create psuedo News articles and titles. For content selection, we want to create a universal selection of content_items from our supabase database, user : w.treygreen@gmail.com, where we pull content samples for the current user to select from and create the sample Newsletter.

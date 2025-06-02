@@ -121,9 +121,9 @@ const NewsletterPreview: React.FC = () => {
       }
       
       // Debug the user IDs
-      console.log('Auth user ID:', userData.user.id);
-      console.log('Context user ID:', user?.id);
-      console.log('User email:', userEmail);
+      // console.log('Auth user ID:', userData.user.id);
+      // console.log('Context user ID:', user?.id);
+      // console.log('User email:', userEmail);
       
       // Verify email preview content
       if (!emailPreview || emailPreview.trim() === '') {
@@ -160,7 +160,7 @@ const NewsletterPreview: React.FC = () => {
         throw new Error('No data returned from insert operation');
       }
       
-      console.log('Successfully created email record with ID:', data.id);
+      // console.log('Successfully created email record with ID:', data.id);
       
       // Process the email immediately
       console.log('Sending email...');
@@ -210,8 +210,8 @@ const NewsletterPreview: React.FC = () => {
       const { data: userData } = await supabase.auth.getUser();
       
       // Debug the user IDs
-      console.log('Auth user ID (scheduler):', userData?.user?.id);
-      console.log('Context user ID (scheduler):', user?.id);
+      // console.log('Auth user ID (scheduler):', userData?.user?.id);
+      // console.log('Context user ID (scheduler):', user?.id);
       
       // Check if we're using mock content
       const hasMockContent = selectedItems.some(item => item.id.startsWith('mock-'));

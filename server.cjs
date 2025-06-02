@@ -34,7 +34,7 @@ app.post('/api/send-email', async (req, res) => {
 
     return res.status(200).json({ data });
   } catch (error) {
-    console.error('Server error:', error);
+    // console.error('Server error:', error);
     return res.status(500).json({ error: 'Failed to send email' });
   }
 });
