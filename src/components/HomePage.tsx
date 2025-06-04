@@ -79,7 +79,7 @@ export default function HomePage() {
               </div>
               <div className="lg:ml-8 flex justify-center">
                 <img 
-                  src="@info.jpg" 
+                  src="/info.jpg" 
                   alt="Newsletter Builder interface" 
                   className="rounded-lg shadow-xl w-full max-w-md" 
                 />
@@ -122,7 +122,7 @@ export default function HomePage() {
               </div>
               <div className="lg:order-1 lg:mr-8 flex justify-center">
                 <img 
-                  src="@info.jpg" 
+                  src="/info.jpg" 
                   alt="Research Tool interface" 
                   className="rounded-lg shadow-xl w-full max-w-md" 
                 />
@@ -165,7 +165,7 @@ export default function HomePage() {
               </div>
               <div className="lg:ml-8 flex justify-center">
                 <img 
-                  src="@info.jpg" 
+                  src="/info.jpg" 
                   alt="Infographic Generator interface" 
                   className="rounded-lg shadow-xl w-full max-w-md" 
                 />

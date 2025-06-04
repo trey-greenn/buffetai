@@ -19,6 +19,7 @@
     "cheerio": "^1.0.0",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "lucide-react": "^0.344.0",
@@ -30,7 +31,8 @@
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^7.6.0",
     "resend": "^4.5.1",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "zod": "^3.25.50"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",

@@ -3,12 +3,15 @@ import { Plus, Trash2, Settings, Save, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase/client';
 import { useAuth } from '../lib/supabase/auth-context';
 import { Link } from 'react-router-dom';
+import { processNewsletters } from '../lib/scheduler/processNewsletter';
 
 interface NewsletterSectionData {
   id: string;
   topic: string;
   instructions: string;
   frequency: string;
+  startDate: string;
+  sendDate: string;
   other: string;
 }
 
@@ -20,6 +23,8 @@ const NewsletterSection: React.FC = () => {
       topic: '',
       instructions: '',
       frequency: 'weekly',
+      startDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      sendDate: '',
       other: '',
     },
   ]);
@@ -39,15 +44,16 @@ const NewsletterSection: React.FC = () => {
         .from('newsletter_sections')
         .select('section_data')
         .eq('user_id', user?.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) {
         console.error('Error fetching sections:', error);
         return;
       }
 
-      if (data && data.section_data) {
-        setSections(data.section_data);
+      if (data && data.length > 0 && data[0].section_data) {
+        setSections(data[0].section_data);
       }
     } catch (error) {
       console.error('Error fetching sections:', error);
@@ -74,17 +80,42 @@ const NewsletterSection: React.FC = () => {
     'monthly',
   ];
 
+  const calculateSendDate = (startDate: string, frequency: string): string => {
+    if (!startDate) return '';
+    
+    const date = new Date(startDate);
+    
+    switch (frequency) {
+      case 'daily':
+        date.setDate(date.getDate() + 1);
+        break;
+      case 'weekly':
+        date.setDate(date.getDate() + 7);
+        break;
+      case 'bi-weekly':
+        date.setDate(date.getDate() + 14);
+        break;
+      case 'monthly':
+        date.setMonth(date.getMonth() + 1);
+        break;
+    }
+    
+    return date.toISOString().slice(0, 16);
+  };
+
   const addNewSection = () => {
-    setSections([
-      ...sections,
-      {
-        id: Date.now().toString(),
-        topic: '',
-        instructions: '',
-        frequency: 'weekly',
-        other: '',
-      },
-    ]);
+    const startDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+    const newSection = {
+      id: Date.now().toString(),
+      topic: '',
+      instructions: '',
+      frequency: 'weekly',
+      startDate,
+      sendDate: calculateSendDate(startDate, 'weekly'),
+      other: '',
+    };
+    
+    setSections([...sections, newSection]);
   };
 
   const removeSection = (id: string) => {
@@ -95,9 +126,20 @@ const NewsletterSection: React.FC = () => {
 
   const updateSection = (id: string, field: keyof NewsletterSectionData, value: string) => {
     setSections(
-      sections.map(section => 
-        section.id === id ? { ...section, [field]: value } : section
-      )
+      sections.map(section => {
+        if (section.id !== id) return section;
+        
+        const updatedSection = { ...section, [field]: value };
+        
+        if (field === 'frequency' || field === 'startDate') {
+          updatedSection.sendDate = calculateSendDate(
+            field === 'startDate' ? value : section.startDate,
+            field === 'frequency' ? value : section.frequency
+          );
+        }
+        
+        return updatedSection;
+      })
     );
   };
 
@@ -113,42 +155,30 @@ const NewsletterSection: React.FC = () => {
     setSaveMessage('');
 
     try {
-      // Check if record exists
-      const { data: existingData } = await supabase
+      // First, delete existing records for this user
+      await supabase
         .from('newsletter_sections')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-      
-      let result;
-      
-      if (existingData) {
-        // Update existing record
-        result = await supabase
-          .from('newsletter_sections')
-          .update({
-            section_data: sections,
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-      } else {
-        // Insert new record
-        result = await supabase
-          .from('newsletter_sections')
-          .insert({
-            user_id: user.id,
-            section_data: sections,
-            updated_at: new Date().toISOString()
-          });
-      }
-      
-      if (result.error) throw result.error;
-      
-      setSaveMessage('Newsletter settings saved successfully!');
-      setTimeout(() => setSaveMessage(''), 3000);
+        .delete()
+        .eq('user_id', user.id);
+
+      // Then insert the new record
+      const { error: insertError } = await supabase
+        .from('newsletter_sections')
+        .insert({
+          user_id: user.id,
+          section_data: sections,
+          updated_at: new Date().toISOString()
+        });
+
+      if (insertError) throw insertError;
+
+      // Process newsletters directly
+      await processNewsletters();
+
+      setSaveMessage('Newsletter settings saved and scheduled successfully!');
     } catch (error: any) {
       console.error('Error saving settings:', error);
-      setSaveMessage(`Error saving newsletter settings: ${error.message || 'Unknown error'}`);
+      setSaveMessage(`Error: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -251,6 +281,38 @@ const NewsletterSection: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label htmlFor={`startDate-${section.id}`} className="block text-sm font-medium text-gray-700 mb-1">
+                  Send Date
+                </label>
+                <input
+                  type="datetime-local"
+                  id={`startDate-${section.id}`}
+                  value={section.startDate}
+                  onChange={(e) => updateSection(section.id, 'startDate', e.target.value)}
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  When do you want this newsletter to be sent? (Eastern Time - NYC)
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor={`sendDate-${section.id}`} className="block text-sm font-medium text-gray-700 mb-1">
+                  Next Date
+                </label>
+                <input
+                  type="datetime-local"
+                  id={`sendDate-${section.id}`}
+                  value={section.sendDate}
+                  disabled
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-50 text-gray-500 sm:text-sm"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Your next newsletter will be sent on this date (Eastern Time - NYC)
+                </p>
               </div>
 
               <div>

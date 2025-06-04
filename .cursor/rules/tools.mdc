@@ -1,0 +1,37 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+Executive Technical Summary: Web Research Bot Feature
+
+This feature enables automated, time-bound web research for user-specified topics. A user inputs a topic and a date range (e.g., "AI regulation", May 1–31, 2025). The system initiates a structured process consisting of the following modules:
+
+API Connection Module
+Utilizes external data sources such as Google Programmable Search, NewsAPI, or SerpAPI to query and retrieve the top 20 relevant articles published within the specified timeframe. Results include titles, URLs, publication dates, and snippets.
+
+Article Processing Pipeline
+For every other (i.e., alternate) retrieved URL:
+
+The bot fetches the full content of the page.
+
+Cleans and parses the article text.
+
+Summarizes the content using a language model (e.g., OpenAI).
+
+Generates tags and metadata for categorization.
+
+Storage Module
+Parsed and enriched data is stored in a Supabase articles table, including fields for topic, URL, title, snippet, summary, tags, and publication date.
+
+Scheduler
+A cron job (via Vercel Scheduler or Supabase Edge Functions) automates repeated data collection tasks based on frequency (e.g., daily, weekly), allowing continuous horizon scanning.
+
+Frontend Interface
+Built in Next.js and TypeScript, the UI enables users to:
+
+Submit new topic + date range queries.
+
+View, filter, and search stored articles.
+
+Access summaries and export data.

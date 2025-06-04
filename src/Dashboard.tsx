@@ -1,9 +1,10 @@
 // src/Dashboard.tsx
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Mail,  User, Settings, Clock, ChevronRight } from 'lucide-react';
+import { Mail, User, Settings, Clock, ChevronRight, BarChart2 } from 'lucide-react';
 import { useAuth } from './lib/supabase/auth-context';
 import EmailStatus from './components/EmailStatus';
+import NewsletterProgress from './components/NewsletterProgress';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
@@ -63,6 +64,17 @@ const Dashboard: React.FC = () => {
               <Clock className="mr-3 h-5 w-5" />
               Email History
             </button>
+            <button 
+              onClick={() => setActiveTab('progress')}
+              className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
+                activeTab === 'progress' 
+                  ? 'bg-indigo-100 text-indigo-700' 
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <BarChart2 className="mr-3 h-5 w-5" />
+              Newsletter Progress
+            </button>
             <Link 
               to="/newsletter-section" 
               className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100"
@@ -107,6 +119,17 @@ const Dashboard: React.FC = () => {
                   </div>
                   <Mail className="h-8 w-8" />
                 </Link>
+                
+                <button
+                  onClick={() => setActiveTab('progress')}
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-lg hover:from-blue-600 hover:to-cyan-700"
+                >
+                  <div>
+                    <h3 className="font-medium">Newsletter Progress</h3>
+                    <p className="text-sm opacity-80">View scheduled newsletter status</p>
+                  </div>
+                  <BarChart2 className="h-8 w-8" />
+                </button>
               </div>
               
               <div className="mt-8">
@@ -128,6 +151,12 @@ const Dashboard: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold text-gray-800 mb-4">Newsletter History</h2>
               <EmailStatus />
+            </div>
+          )}
+          
+          {activeTab === 'progress' && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <NewsletterProgress />
             </div>
           )}
         </div>

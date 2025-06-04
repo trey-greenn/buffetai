@@ -21,3 +21,7 @@ Architecture:
 - **Prompt Composition Logic:**
   ```ts
   const finalPrompt = `Create a ${layout} infographic about "${topic}" using a clean, flat style...`;
+
+
+
+

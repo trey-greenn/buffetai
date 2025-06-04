@@ -1,36 +1,34 @@
 import React, { useState } from 'react';
 import { Image, Download, LayoutTemplate } from 'lucide-react';
 
-// Define layout types and their descriptions
 const layoutOptions = [
-  { 
-    id: 'timeline', 
-    name: 'Timeline', 
+  {
+    id: 'timeline',
+    name: 'Timeline',
     description: 'Sequential events or history',
     promptTemplate: 'Create a clear timeline infographic about "{topic}" with chronological events, dates, and icons. Use a horizontal layout with connecting elements between events. Include a title at the top and use a clean, modern design with a cohesive color scheme.'
   },
-  { 
-    id: 'comparison', 
-    name: 'Comparison', 
+  {
+    id: 'comparison',
+    name: 'Comparison',
     description: 'Compare multiple items side by side',
     promptTemplate: 'Create a side-by-side comparison infographic about "{topic}" with two clearly labeled columns. Use icons, data points, and short text descriptions to highlight key differences. Include a title at the top and use contrasting colors to distinguish between the compared items.'
   },
-  { 
-    id: 'chart', 
-    name: 'Bar Chart', 
+  {
+    id: 'chart',
+    name: 'Bar Chart',
     description: 'Visualize data with bars',
     promptTemplate: 'Create a bar chart infographic about "{topic}" with clearly labeled axes, values, and bars. Use a title at the top, include a legend if needed, and add brief annotations explaining key insights. Use a clean design with consistent colors for data representation.'
   },
-  { 
-    id: 'flowchart', 
-    name: 'Flowchart', 
+  {
+    id: 'flowchart',
+    name: 'Flowchart',
     description: 'Show processes or decisions',
     promptTemplate: 'Create a flowchart infographic about "{topic}" with connected nodes showing a step-by-step process. Use different shapes for different types of steps, include directional arrows, and add concise text in each node. Include a title and a clear starting and ending point.'
   }
 ];
 
 const InfographicGenerator: React.FC = () => {
-  // State for infographic generator
   const [topic, setTopic] = useState('');
   const [selectedLayout, setSelectedLayout] = useState(layoutOptions[0].id);
   const [thumbnailSize, setThumbnailSize] = useState('1024x1024');
@@ -38,31 +36,31 @@ const InfographicGenerator: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState('');
 
-  // Get the selected layout object
-  // const getSelectedLayoutOption = () => {
-  //   return layoutOptions.find(option => option.id === selectedLayout) || layoutOptions[0];
-  // };
-
-  // Generate the prompt based on topic and selected layout
   const generatePrompt = (topic: string, layoutId: string) => {
     const layoutOption = layoutOptions.find(option => option.id === layoutId) || layoutOptions[0];
-    return layoutOption.promptTemplate.replace('{topic}', topic);
+    const styleDescriptor = thumbnailStyle === 'natural' ? 'natural lighting and realistic textures' : 'vivid colors and high contrast details';
+    const sizeDescriptor = thumbnailSize === '1792x1024'
+      ? 'in a wide landscape orientation'
+      : thumbnailSize === '1024x1792'
+        ? 'in a tall portrait orientation'
+        : 'in a square format';
+
+    return `${layoutOption.promptTemplate.replace('{topic}', topic)} Style: ${styleDescriptor}, ${sizeDescriptor}.`;
   };
 
   const handleThumbnailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!topic.trim()) {
       alert('Please enter a topic for your infographic');
       return;
     }
-    
+
     setIsGenerating(true);
-    
+
     try {
       const finalPrompt = generatePrompt(topic, selectedLayout);
-      
-      // Call the OpenAI API to generate an image
+
       const response = await fetch('https://api.openai.com/v1/images/generations', {
         method: 'POST',
         headers: {
@@ -73,19 +71,26 @@ const InfographicGenerator: React.FC = () => {
           model: "dall-e-3",
           prompt: finalPrompt,
           n: 1,
-          size: thumbnailSize,
-          quality: "standard",
-          style: thumbnailStyle === 'natural' ? 'natural' : 'vivid'
+          size: thumbnailSize
         })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error?.message || 'Failed to generate image');
+        const errorText = await response.text();
+        console.error("OpenAI API raw error response:", errorText);
+
+        let errorJson;
+        try {
+          errorJson = JSON.parse(errorText);
+        } catch (parseError) {
+          console.warn("Failed to parse error response as JSON");
+        }
+
+        throw new Error(errorJson?.error?.message || errorText || 'Unknown OpenAI error');
       }
 
       const data = await response.json();
-      
+
       if (data.data && data.data.length > 0) {
         setGeneratedImageUrl(data.data[0].url);
       } else {
@@ -99,37 +104,29 @@ const InfographicGenerator: React.FC = () => {
     }
   };
 
-  const handleDownloadImage = async () => {
-    if (!generatedImageUrl) return;
-    
-    try {
-      // Fetch the image data
-      const response = await fetch(generatedImageUrl);
-      if (!response.ok) throw new Error('Failed to fetch image');
-      
-      // Convert the image to a blob
-      const blob = await response.blob();
-      
-      // Create a URL for the blob
-      const blobUrl = URL.createObjectURL(blob);
-      
-      // Create a temporary link element
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `infographic-${selectedLayout}-${Date.now()}.png`; // Generate a unique filename
-      
-      // Append to the document, click it, and remove it
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the blob URL
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-    } catch (error) {
-      console.error('Error downloading image:', error);
-      alert('Failed to download the image. Please try again.');
-    }
-  };
+  // const handleDownloadImage = async () => {
+  //   if (!generatedImageUrl) return;
+
+  //   try {
+  //     const response = await fetch(generatedImageUrl);
+  //     if (!response.ok) throw new Error('Failed to fetch image');
+
+  //     const blob = await response.blob();
+  //     const blobUrl = URL.createObjectURL(blob);
+
+  //     const link = document.createElement('a');
+  //     link.href = blobUrl;
+  //     link.download = `infographic-${selectedLayout}-${Date.now()}.png`;
+  //     document.body.appendChild(link);
+  //     link.click();
+  //     document.body.removeChild(link);
+
+  //     setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
+  //   } catch (error) {
+  //     console.error('Error downloading image:', error);
+  //     alert('Failed to download the image. Please try again.');
+  //   }
+  // };
 
   return (
     <div className="max-w-4xl mx-auto mt-16 mb-16">
@@ -142,10 +139,9 @@ const InfographicGenerator: React.FC = () => {
           Generate eye-catching infographics for your content with AI-powered image generation.
         </p>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-lg p-8 border-l-4 border-green-500">
         <form onSubmit={handleThumbnailSubmit}>
-          {/* Topic Input */}
           <div className="mb-6">
             <label htmlFor="topic" className="block text-sm font-medium text-gray-700 mb-2">
               Topic
@@ -160,20 +156,19 @@ const InfographicGenerator: React.FC = () => {
               required
             />
           </div>
-          
-          {/* Layout Selector */}
+
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-3">
               Layout Type
             </label>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
               {layoutOptions.map((layout) => (
-                <div 
+                <div
                   key={layout.id}
                   onClick={() => setSelectedLayout(layout.id)}
                   className={`cursor-pointer border rounded-md p-3 flex flex-col items-center text-center transition-colors ${
-                    selectedLayout === layout.id 
-                      ? 'border-green-500 bg-green-50' 
+                    selectedLayout === layout.id
+                      ? 'border-green-500 bg-green-50'
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
@@ -184,8 +179,7 @@ const InfographicGenerator: React.FC = () => {
               ))}
             </div>
           </div>
-          
-          {/* Infographic Options */}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div>
               <label htmlFor="thumbnail-size" className="block text-sm font-medium text-gray-700 mb-2">
@@ -202,7 +196,7 @@ const InfographicGenerator: React.FC = () => {
                 <option value="1024x1792">1024x1792 (Portrait)</option>
               </select>
             </div>
-            
+
             <div>
               <label htmlFor="thumbnail-style" className="block text-sm font-medium text-gray-700 mb-2">
                 Style
@@ -218,8 +212,7 @@ const InfographicGenerator: React.FC = () => {
               </select>
             </div>
           </div>
-          
-          {/* Generate Button */}
+
           <div className="flex justify-end mb-6">
             <button
               type="submit"
@@ -242,32 +235,37 @@ const InfographicGenerator: React.FC = () => {
               )}
             </button>
           </div>
-          
-          {/* Generated Image Display */}
-          {generatedImageUrl && (
-            <div className="mt-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-3">Generated Infographic</h3>
-              <div className="flex flex-col items-center">
-                <img 
-                  src={generatedImageUrl} 
-                  alt="Generated infographic" 
-                  className="rounded-lg shadow-md max-w-full h-auto mb-4"
-                />
-                <button 
-                  type="button"
-                  onClick={handleDownloadImage}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Infographic
-                </button>
-              </div>
-            </div>
-          )}
         </form>
+
+        {generatedImageUrl && (
+          <div className="mt-8 text-center">
+            <img src={generatedImageUrl} alt="Generated infographic" className="mx-auto rounded-lg shadow-md max-w-full" />
+            <div className="mt-4 flex justify-center space-x-4">
+              <a 
+                href={generatedImageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Open Image in New Tab
+              </a>
+              
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(generatedImageUrl);
+                  alert('Image URL copied to clipboard!');
+                }}
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Copy Image URL
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default InfographicGenerator; 
+export default InfographicGenerator;
