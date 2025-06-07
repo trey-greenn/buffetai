@@ -13,6 +13,12 @@ import NewsletterPreview from './NewsletterPreview';
 import Dashboard from './Dashboard';
 import PricingPage from './components/PricingPage';
 
+declare global {
+  interface Window {
+    openai: any;
+  }
+}
+
 function App() {
   return (
     <AuthProvider>
@@ -84,5 +90,23 @@ function App() {
     </AuthProvider>
   );
 }
+
+// Global error handler for OpenAI API key
+if (typeof window !== 'undefined') {
+  window.addEventListener('error', (event) => {
+    // Check if it's the OpenAI API key error
+    if (event.message && event.message.includes('OPENAI_API_KEY environment variable is missing')) {
+      console.error('OpenAI API key is missing. Using fallback method...');
+      
+      // Attempt to set the global OpenAI object with the API key from meta tag
+      const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+      if (apiKey) {
+        // This is a very crude way to fix it, but might work as a temporary solution
+        window.openai = { apiKey };
+      }
+    }
+  });
+}
+
 console.log('App is loading');
 export default App;
