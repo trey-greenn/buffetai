@@ -3,33 +3,43 @@ description:
 globs: 
 alwaysApply: false
 ---
-Automated Email scheduler:
-- From the saved setting in Newsletter Section, we need to set up and save, the frequency, requirements, and subject matter for the specific newsletter. Allow the user to see snippets of pending emails.
+Newsletter Archicteture:
 
-4. Complete the Scheduling System
-The scheduling system is partially implemented but needs to be completed.
-Implementation Steps:
-Finish the integration between the scheduler and the email processor
-Add error handling and retry mechanisms
-Implement timezone support for scheduled newsletters
-Create a more user-friendly scheduling interface
-5. Develop the Automated Pipeline
-This is a critical part of the system that needs to be developed to automate the newsletter generation.
-Implementation Steps:
-Set up the cron job or scheduled functions to run at appropriate intervals
-Implement logic to check which newsletters need to be sent
-Add automatic content collection, summarization, and email generation
-Create logging and monitoring for the automated process
+--Example Page Mock Up--
 
-6. Build a Newsletter Management Dashboard
-Users need a way to manage their newsletters easily.
-Implementation Steps:
-Enhance the existing dashboard with a dedicated newsletter management section
-Add analytics for open rates and engagement
-Create a history view of past newsletters
-Allow users to pause or modify scheduled newsletters
+Newsletter - Title                    [Add Section]
+Section 2
+Topic
+Instruction
+Frequency
+Send Date
+Next Date
+Other Guidelines
 
-Rules:
+Section 1
+Topic
+Instruction
+Frequency
+Send Date
+Next Date
+Other Guidelines
 
-Okay, start with Phase 1. However, remember this. So lets say the user wants a weekly freqency letter, starting Jun 1, 2025 11:00 PM that means the next one will be Jun 8, 2025. In between Jun 1 - Jun 8, in our content collection automation, we need to be collecting content every 24 hours or so, so the users gets content that is up to date and accurate. So for content collection, create an algorithim that takes the start date and upcoming date, take the remaining time in hours, divide by 7 to get a standard update frequency to add more content to the users content_items. Every update, at the max scrape 5 articles from the specified topic,
+Save Settings
+
+Newsletter Settings are saved to the database.
+
+--Newsletter Function Explaind--
+
+
+Based on the Frequency, our algorithim determines how often to update the Newsletter content_items with Articles to summarize. Being(Current Date - Send Date / 7 == rate of content updpates in hours). So if its a week every 24 hours. If its a day every 3.2 hours.
+
+In the Users Dashboard - Newsletter Progress
+The User should see the Title of Newsletter # Number ID of Newsletters Sent starting at 1.
+A settings button to edit the newsletter.
+Then the article titles under the Newsletter TItle to see the progress of what content is going to be in the newsletter.
+
+Then the email will be sent on the Send Date. Next Date becomes the new Send Date and the new Next Date will be updated based on the frequency.
+
+
+
 

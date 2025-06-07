@@ -11,6 +11,7 @@ import SiteHeader from './components/SiteHeader';
 import HomePage from './components/HomePage';
 import NewsletterPreview from './NewsletterPreview';
 import Dashboard from './Dashboard';
+import PricingPage from './components/PricingPage';
 
 function App() {
   return (
@@ -29,6 +30,14 @@ function App() {
             <Route 
               path="/profile" 
               element={<ProtectedRoute><UserProfile /></ProtectedRoute>} 
+            />
+            <Route 
+              path="/pricing"
+              element={
+                <div className="max-w-5xl mx-auto rounded-xl bg-white p-1 mb-12 shadow-[0_0_15px_rgba(79,70,229,0.5)] bg-gradient-to-r from-indigo-200 via-white to-purple-200">
+                  <PricingPage />
+                </div>
+              }
             />
             <Route 
               path="/newsletter" 
@@ -60,14 +69,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-              <Route 
-    path="/newsletter-preview" 
-    element={
-      <ProtectedRoute>
-        <NewsletterPreview />
-      </ProtectedRoute>
-    } 
-  />
+            <Route 
+              path="/newsletter-preview" 
+              element={
+                <ProtectedRoute>
+                  <NewsletterPreview />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/dashboard" element={<Dashboard />} />
           </Routes>
         </div>
