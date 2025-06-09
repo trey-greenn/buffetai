@@ -40,7 +40,7 @@ export default function SiteHeader() {
           <div className="flex items-center">
             {user ? (
               <div className="flex items-center space-x-4">
-                <Link to="/profile" className="text-sm font-medium text-gray-700 hover:text-indigo-600">
+                <Link to="/dashboard" className="text-sm font-medium text-gray-700 hover:text-indigo-600">
                   Profile
                 </Link>
                 <button

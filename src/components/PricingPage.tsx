@@ -24,17 +24,18 @@ interface PricingTier {
 export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<PricingPeriod>('monthly');
     const { user: _user } = useAuth();
+    const stripeMonthlyPriceId = import.meta.env.VITE_STRIPE_PRICE_ID_MONTHLY;
 
   const pricingTiers: PricingTier[] = [
     {
       name: "Basic",
       price: {
-        monthly: 9.99,
-        annually: 99.99,
+        monthly: 4.99,
+        annually: 39.99,
       },
       priceId: {
-        monthly: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
-        annually: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
+        monthly: stripeMonthlyPriceId,
+        annually: stripeMonthlyPriceId,
       },
       description: "Everything you need to get started with your newsletter",
       features: [
@@ -48,12 +49,12 @@ export default function PricingPage() {
     {
       name: "Pro",
       price: {
-        monthly: 19.99,
-        annually: 199.99,
+        monthly: 9.99,
+        annually: 99.99,
       },
       priceId: {
-        monthly: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
-        annually: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
+        monthly: stripeMonthlyPriceId,
+        annually: stripeMonthlyPriceId,
       },
       description: "Perfect for growing your newsletter audience",
       features: [
@@ -69,12 +70,12 @@ export default function PricingPage() {
     {
       name: "Enterprise",
       price: {
-        monthly: 49.99,
-        annually: 499.99,
+        monthly: 29.99,
+        annually: 299.99,
       },
       priceId: {
-        monthly: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
-        annually: "price_REPLACE_WITH_ACTUAL_STRIPE_PRICE_ID",
+        monthly: stripeMonthlyPriceId,
+        annually: stripeMonthlyPriceId,
       },
       description: "For professional newsletter creators and teams",
       features: [

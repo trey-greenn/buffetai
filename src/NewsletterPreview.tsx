@@ -352,3 +352,6 @@ const NewsletterPreview: React.FC = () => {
 };
 
 export default NewsletterPreview;
+
+
+// curl -X POST http://localhost:3001/api/emails/send -H "Content-Type: application/json" -H "x-api-key: 1234567890" -d '{"emailId": "f3a9c4e2-1851-4855-bcf2-95d3ad0d668d"}'

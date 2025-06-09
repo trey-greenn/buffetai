@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Image, Download, LayoutTemplate } from 'lucide-react';
+import { ENV } from '../config/env';
 
 const layoutOptions = [
   {
@@ -65,7 +66,7 @@ const InfographicGenerator: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_OPENAI_API_KEY}`
+          'Authorization': `Bearer ${ENV.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
           model: "dall-e-3",

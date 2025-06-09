@@ -9,6 +9,8 @@ import { populatePendingEmailContent } from './content/populateEmailContent';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api';
 const API_KEY = process.env.CRON_INTERNAL_API_KEY || '';
 
+
+
 // Schedule daily content collection for all topics
 export function setupContentCollectionCron() {
   const topics = [
@@ -160,3 +162,7 @@ export function initializeCronJobs() {
   
   console.log('All cron jobs initialized');
 }
+
+//curl -X POST http://localhost:3000/api/emails/send -H "Content-Type: application/json" -H "x-api-key:1234567890" -d '{"emailId": "f3a9c4e2-1851-4855-bcf2-95d3ad0d668d"}'
+
+// curl -X POST http://localhost:3001/test/schedule-email -H "Content-Type: application/json" -d '{"recipient_email":"w.treygreer@gmail.com","subject":"Test Email"}'

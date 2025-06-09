@@ -1,5 +1,10 @@
 {
     "version": 2,
+    "env": {
+      "VITE_OPENAI_API_KEY": "@openai_api_key"
+    },
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
     "builds": [
       {
         "src": "server.cjs",
@@ -33,6 +38,20 @@
       {
         "src": "/(.*)",
         "dest": "/index.html"
+      }
+    ],
+    "crons": [
+      {
+        "path": "/api/emails/process-queue",
+        "schedule": "0 * * * *"
+      },
+      {
+        "path": "/api/content/collect-all",
+        "schedule": "0 2 * * *"
+      },
+      {
+        "path": "/api/newsletters/process-sections",
+        "schedule": "0 0 * * *"
       }
     ]
   }

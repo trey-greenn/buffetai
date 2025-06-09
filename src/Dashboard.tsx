@@ -75,6 +75,17 @@ const Dashboard: React.FC = () => {
               <BarChart2 className="mr-3 h-5 w-5" />
               Newsletter Progress
             </button>
+            <button 
+              onClick={() => setActiveTab('settings')}
+              className={`flex items-center w-full px-3 py-2 text-sm font-medium rounded-md ${
+                activeTab === 'settings' 
+                  ? 'bg-indigo-100 text-indigo-700' 
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Settings className="mr-3 h-5 w-5" />
+              User Settings
+            </button>
             <Link 
               to="/newsletter-section" 
               className="flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100"
@@ -130,6 +141,17 @@ const Dashboard: React.FC = () => {
                   </div>
                   <BarChart2 className="h-8 w-8" />
                 </button>
+                
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className="flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500 to-teal-600 text-white rounded-lg hover:from-cyan-600 hover:to-teal-700"
+                >
+                  <div>
+                    <h3 className="font-medium">User Settings</h3>
+                    <p className="text-sm opacity-80">Manage your profile and preferences</p>
+                  </div>
+                  <Settings className="h-8 w-8" />
+                </button>
               </div>
               
               <div className="mt-8">
@@ -157,6 +179,76 @@ const Dashboard: React.FC = () => {
           {activeTab === 'progress' && (
             <div className="bg-white rounded-lg shadow-md p-6">
               <NewsletterProgress />
+            </div>
+          )}
+          
+          {activeTab === 'settings' && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">User Settings</h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-3">Profile Information</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-4">
+                    <div>
+                      <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                      <input
+                        type="email"
+                        id="email"
+                        value={user.email}
+                        disabled
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <input
+                        type="text"
+                        id="name"
+                        placeholder="Enter your full name"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-medium text-gray-800 mb-3">Notification Preferences</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="emailNotifications"
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="emailNotifications" className="ml-2 block text-sm text-gray-700">
+                        Receive email notifications about new content
+                      </label>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="weeklyDigest"
+                        className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
+                      />
+                      <label htmlFor="weeklyDigest" className="ml-2 block text-sm text-gray-700">
+                        Subscribe to weekly digest
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="pt-4">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

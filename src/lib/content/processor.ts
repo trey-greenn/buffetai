@@ -1,6 +1,6 @@
 // src/lib/content/processor.ts
 import { supabase } from '../supabase/client.ts';
-import OpenAI from 'openai';
+import { getOpenAI } from '../../lib/openai';
 
 interface ContentItem {
   id: string;
@@ -13,9 +13,7 @@ interface ContentItem {
   summary?: string;
 }
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = getOpenAI();
 
 async function fetchContentItem(contentId: string): Promise<ContentItem> {
   const { data, error } = await supabase

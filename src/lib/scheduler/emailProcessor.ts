@@ -116,22 +116,22 @@ export async function processPendingEmails(): Promise<void> {
     // Process each email
     for (const email of emailsToSend || []) {
       try {
-        // Here you would call your email sending logic
-        // For now, just update the status to 'sent'
-        const { error: updateError } = await supabase
-          .from('scheduled_emails')
-          .update({
-            status: 'sent',
-            sent_at: now.toISOString()
-          })
-          .eq('id', email.id);
-          
-        if (updateError) {
-          console.error(`Error updating email ${email.id}:`, updateError);
-          continue;
+        // Call the email sending endpoint
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || ''}/api/emails/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': process.env.CRON_INTERNAL_API_KEY || ''
+          },
+          body: JSON.stringify({ emailId: email.id })
+        });
+        
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.message || 'Failed to send email');
         }
         
-        console.log(`Marked email ${email.id} as sent`);
+        console.log(`Sent email ${email.id}`);
         
         // Schedule the next email based on frequency
         await scheduleNextEmail(email);
@@ -147,12 +147,39 @@ export async function processPendingEmails(): Promise<void> {
 /**
  * Schedule the next email based on the frequency of the sections
  */
-async function scheduleNextEmail(email: any): Promise<void> {
+export async function scheduleNextEmail(email: any): Promise<void> {
   try {
     const userId = email.user_id;
-    const sectionIds = email.section_ids || [];
+    let sectionIds = email.section_ids || [];
+    let sectionData = email.section_data;
     
-    if (sectionIds.length === 0) return;
+    // If both section_ids and section_data are missing, fetch them from the database
+    if (!sectionIds.length && !sectionData) {
+      console.log(`Fetching missing section data for email ${email.id}`);
+      
+      // Try to fetch complete email data
+      const { data: completeEmail, error: emailError } = await supabase
+        .from('scheduled_emails')
+        .select('*')
+        .eq('id', email.id)
+        .single();
+        
+      if (emailError) {
+        console.error(`Error fetching complete email data: ${emailError.message}`);
+        return;
+      }
+      
+      if (completeEmail) {
+        sectionIds = completeEmail.section_ids || [];
+        sectionData = completeEmail.section_data;
+      }
+      
+      // If still no section data, we can't proceed
+      if (!sectionIds.length && !sectionData) {
+        console.error('Email has no section IDs or section data after fetch:', email.id);
+        return;
+      }
+    }
     
     // Get section details
     const { data: sectionsData, error: sectionsError } = await supabase
@@ -169,14 +196,16 @@ async function scheduleNextEmail(email: any): Promise<void> {
     const sections = sectionsData?.section_data || [];
     
     // Find the section that was used in this email
-    const section = sections.find((s: any) => sectionIds.includes(s.id));
+    const section = sections.find((s: any) => 
+      sectionIds.includes(s.id) || (sectionData && sectionData.id === s.id)
+    );
     
     if (!section) {
       console.error(`Section not found for email ${email.id}`);
       return;
     }
     
-    // Calculate the next send date based on frequency
+    // Get the next send date from the current email
     const nextSendDate = new Date(email.next_date);
     
     // Calculate the next-next date based on frequency
@@ -199,35 +228,68 @@ async function scheduleNextEmail(email: any): Promise<void> {
         nextNextDate.setDate(nextNextDate.getDate() + 7); // Default to weekly
     }
     
-    // Create a new scheduled email for the next period
-    const { error: insertError } = await supabase
+    // STEP 1: Create a new scheduled email for the next period
+    const { data: newEmail, error: insertError } = await supabase
       .from('scheduled_emails')
       .insert({
         user_id: userId,
         status: 'pending',
-        scheduled_time: nextSendDate.toISOString(), // For compatibility
+        scheduled_time: nextSendDate.toISOString(),
         send_date: nextSendDate.toISOString(),
         next_date: nextNextDate.toISOString(),
-        section_ids: sectionIds,
+        section_ids: sectionIds || [],
+        section_data: sectionData || null,
         created_at: new Date().toISOString()
-      });
+      })
+      .select('id');
       
+    console.log('Insert result:', newEmail, insertError);
+    
     if (insertError) {
       console.error(`Error scheduling next email for user ${userId}:`, insertError);
       return;
     }
     
-    console.log(`Scheduled next email for user ${userId}`);
+    console.log(`Scheduled next email ${newEmail?.[0]?.id} for user ${userId} at ${nextSendDate.toISOString()}`);
     
-    // Schedule content collection for the next period
+    // STEP 2: Update the newsletter section with the new dates
+    const updatedSections = sections.map((s: any) => {
+      if ((sectionIds && sectionIds.includes(s.id)) || (sectionData && sectionData.id === s.id)) {
+        // Update this section's dates
+        return {
+          ...s,
+          startDate: nextSendDate.toISOString().slice(0, 16), // Update Send Date to Next Date
+          sendDate: nextNextDate.toISOString().slice(0, 16)   // Update Next Date to the following date
+        };
+      }
+      return s;
+    });
+    
+    // Save the updated section data
+    const { error: updateError } = await supabase
+      .from('newsletter_sections')
+      .update({
+        section_data: updatedSections,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+      
+    if (updateError) {
+      console.error(`Error updating section dates for user ${userId}:`, updateError);
+    } else {
+      console.log(`Updated section dates for user ${userId}`);
+    }
+    
+    // STEP 3: Schedule content collection for the next period
     await scheduleContentCollection(
       userId,
       new Date(), // current date
       nextSendDate,
-      sectionIds
+      sectionIds || [sectionData?.id].filter(Boolean)
     );
   } catch (error) {
     console.error('Error in scheduleNextEmail:', error);
+    console.error('Email data:', JSON.stringify(email));
   }
 }
 

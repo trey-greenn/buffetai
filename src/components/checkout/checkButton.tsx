@@ -1,23 +1,20 @@
-import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 
 // You'll need to replace with your actual Stripe publishable key
-const stripePromise = loadStripe('pk_test_REPLACE_WITH_YOUR_PUBLISHABLE_KEY');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE);
 
 interface CheckoutButtonProps {
   priceId: string;
   productName: string;
-  isLoading?: boolean;
 }
 
-export default function CheckoutButton({ priceId, productName, isLoading = false }: CheckoutButtonProps) {
-  const [isCheckoutLoading, setIsCheckoutLoading] = useState(false);
-
+export default function CheckoutButton({ priceId, productName }: CheckoutButtonProps) {
   const handleCheckout = async () => {
-    setIsCheckoutLoading(true);
-
     try {
-      // Call your backend to create a checkout session
+      const stripe = await stripePromise;
+      if (!stripe) throw new Error('Stripe failed to load');
+
+      // Create checkout session using your existing server
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
@@ -31,28 +28,20 @@ export default function CheckoutButton({ priceId, productName, isLoading = false
 
       const { sessionId } = await response.json();
       
-      // Redirect to Stripe Checkout
-      const stripe = await stripePromise;
-      if (stripe) {
-        const { error } = await stripe.redirectToCheckout({ sessionId });
-        if (error) {
-          console.error('Error redirecting to checkout:', error);
-        }
-      }
+      // Redirect to Stripe checkout
+      await stripe.redirectToCheckout({ sessionId });
     } catch (error) {
-      console.error('Error creating checkout session:', error);
-    } finally {
-      setIsCheckoutLoading(false);
+      console.error('Error redirecting to checkout:', error);
+      alert('An error occurred. Please try again later.');
     }
   };
 
   return (
     <button
       onClick={handleCheckout}
-      disabled={isLoading || isCheckoutLoading}
-      className="w-full py-3 px-6 border border-transparent rounded-md text-center font-medium bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+      className="mt-8 block w-full bg-indigo-600 border border-transparent rounded-md py-3 px-8 text-center font-medium text-white hover:bg-indigo-700"
     >
-      {isCheckoutLoading ? 'Loading...' : 'Subscribe'}
+      {productName === "Enterprise" ? "Contact Sales" : "Subscribe Now"}
     </button>
   );
 }

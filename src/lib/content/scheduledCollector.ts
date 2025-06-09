@@ -1,15 +1,12 @@
 import { supabase } from '../supabase/client';
 import axios from 'axios';
-import OpenAI from 'openai';
+import { getOpenAI } from '../openai';
 
 // News API key from environment variables
 const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY || '4e3de078824d4e228b6f4a50d3007d0a';
 
-// OpenAI for summarization
-const openai = new OpenAI({
-  apiKey: import.meta.env.VITE_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+// OpenAI for summarization - use the centralized utility
+const openai = getOpenAI();
 
 // Topics we want to collect
 const TOPICS = ['Technology', 'Politics'];

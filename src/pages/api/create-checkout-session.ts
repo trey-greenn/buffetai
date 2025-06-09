@@ -1,10 +1,13 @@
 import Stripe from 'stripe';
+import dotenv from 'dotenv';
 
-// Initialize Stripe with your secret key
-// In production, this should be stored in an environment variable
-const stripe = new Stripe('sk_test_REPLACE_WITH_YOUR_SECRET_KEY');
+dotenv.config();
 
-export default async function handler(req, res) {
+// Initialize Stripe with your secret key from environment variables
+const stripe = new Stripe(process.env.VITE_STRIPE_SECRET as string);
+
+// Express route handler format, not Next.js API handler
+export const createCheckoutSession = async (req: any, res: any) => {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -34,4 +37,4 @@ export default async function handler(req, res) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
-}
+};
