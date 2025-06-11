@@ -47,20 +47,34 @@ export async function processNewsletters(): Promise<void> {
         
         if (!existing || existing.length === 0) {
           console.log("Creating new email for topic:", section.topic);
+
+          const { data: userProfile, error: profileError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('id', userId)
+            .single();
+
+          if (profileError || !userProfile?.email) {
+            console.error('Error fetching user email:', profileError);
+            console.log('Skipping email creation for user without email');
+            continue;
+          }
+
           // Create new scheduled email
           const { data: newEmail, error: insertError } = await supabase
-            .from('scheduled_emails')
-            .insert({
-              user_id: userId,
-              status: 'pending',
-              scheduled_time: sendDate.toISOString(),
-              send_date: sendDate.toISOString(),
-              next_date: nextDate.toISOString(),
-              section_data: section,
-              created_at: now.toISOString()
-            })
-            .select('id')
-            .single();
+          .from('scheduled_emails')
+          .insert({
+            user_id: userId,
+            recipient_email: userProfile.email, // Add this line
+            status: 'pending',
+            scheduled_time: sendDate.toISOString(),
+            send_date: sendDate.toISOString(),
+            next_date: nextDate.toISOString(),
+            section_data: section,
+            created_at: now.toISOString()
+          })
+          .select('id')
+  .single();
             
           if (insertError) {
             console.error('Error creating email:', insertError);

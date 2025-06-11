@@ -228,11 +228,24 @@ export async function scheduleNextEmail(email: any): Promise<void> {
         nextNextDate.setDate(nextNextDate.getDate() + 7); // Default to weekly
     }
     
-    // STEP 1: Create a new scheduled email for the next period
+    // Fetch user email first
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError) {
+      console.error(`Error fetching user email for ${userId}:`, profileError);
+      return;
+    }
+
+    // Insert with recipient_email
     const { data: newEmail, error: insertError } = await supabase
       .from('scheduled_emails')
       .insert({
         user_id: userId,
+        recipient_email: userProfile?.email,
         status: 'pending',
         scheduled_time: nextSendDate.toISOString(),
         send_date: nextSendDate.toISOString(),

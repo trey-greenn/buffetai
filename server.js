@@ -12,7 +12,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173', // Your Vite dev server URL
+  credentials: true
+}));
 app.use(express.json());
 
 // Initialize Supabase
@@ -129,6 +132,36 @@ app.post('/api/emails/send', async (req, res) => {
     }
 
     console.log('✅ Found email:', email);
+    
+    // Validate recipient email
+    if (!email.recipient_email) {
+      console.log('❌ No recipient email found, trying to fetch from user profile');
+      
+      // Try to get recipient email from user profile
+      const { data: userData, error: userError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', email.user_id)
+        .single();
+        
+      if (userError || !userData?.email) {
+        console.log('❌ Could not find user email:', userError);
+        return res.status(400).json({ error: 'No recipient email found and could not retrieve from user profile' });
+      }
+      
+      // Update the email record with the user's email
+      const { error: updateEmailError } = await supabase
+        .from('scheduled_emails')
+        .update({ recipient_email: userData.email })
+        .eq('id', emailId);
+        
+      if (updateEmailError) {
+        console.log('❌ Failed to update email record with recipient:', updateEmailError);
+      } else {
+        console.log('✅ Updated email record with recipient:', userData.email);
+        email.recipient_email = userData.email;
+      }
+    }
     
     // Get email content from the appropriate field
     const emailContent = email.email_content || email.content;
@@ -351,6 +384,27 @@ app.post('/api/create-checkout-session', async (req, res) => {
       res.status(500).json({ error: 'Failed to create checkout session' });
     }
   });
+
+app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.VITE_STRIPE_WEBHOOK_SECRET;
+  
+  let event;
+  
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+  
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    // Handle successful payment
+    console.log('Payment successful for session:', session.id);
+  }
+  
+  res.status(200).json({received: true});
+});
 
 // Start server
 app.listen(PORT, () => {

@@ -11,6 +11,10 @@
         "use": "@vercel/node"
       },
       {
+        "src": "server.js",
+        "use": "@vercel/node"
+      },
+      {
         "src": "package.json",
         "use": "@vercel/static-build",
         "config": {
@@ -19,6 +23,14 @@
       }
     ],
     "routes": [
+      {
+        "src": "/api/create-checkout-session",
+        "dest": "server.js"
+      },
+      {
+        "src": "/api/webhook",
+        "dest": "server.js"
+      },
       {
         "src": "/api/(.*)",
         "dest": "server.cjs"
@@ -43,7 +55,7 @@
     "crons": [
       {
         "path": "/api/emails/process-queue",
-        "schedule": "0 * * * *"
+        "schedule": "*/10 * * * *"
       },
       {
         "path": "/api/content/collect-all",

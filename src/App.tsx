@@ -12,6 +12,7 @@ import HomePage from './components/HomePage';
 import NewsletterPreview from './NewsletterPreview';
 import Dashboard from './Dashboard';
 import PricingPage from './components/PricingPage';
+import SubscriptionSuccess from './components/SubscriptionSuccess';
 
 declare global {
   interface Window {
@@ -84,6 +85,7 @@ function App() {
               } 
             />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/subscription-success" element={<SubscriptionSuccess />} />
           </Routes>
         </div>
       </BrowserRouter>

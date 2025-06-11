@@ -138,11 +138,24 @@ async function scheduleEmail({
     // Calculate next date based on frequency
     const nextDate = calculateNextSendDate(frequency, sendDate, timezone);
 
+    // Fetch user email
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('email')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !userProfile?.email) {
+      console.error(`Error fetching user email for ${userId}:`, profileError);
+      return false;
+    }
+
     // Insert email schedule record
     const { error } = await supabase
       .from('scheduled_emails')
       .insert({
         user_id: userId,
+        recipient_email: userProfile.email,
         status: 'pending',
         scheduled_time: scheduledTime.toISOString(),
         send_date: sendDate.toISOString(),

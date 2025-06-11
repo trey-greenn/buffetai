@@ -35,7 +35,7 @@ export default function PricingPage() {
       },
       priceId: {
         monthly: stripeMonthlyPriceId,
-        annually: stripeMonthlyPriceId,
+        annually: import.meta.env.VITE_STRIPE_PRICE_ID_ANNUALLY,
       },
       description: "Everything you need to get started with your newsletter",
       features: [
@@ -54,7 +54,7 @@ export default function PricingPage() {
       },
       priceId: {
         monthly: stripeMonthlyPriceId,
-        annually: stripeMonthlyPriceId,
+        annually: import.meta.env.VITE_STRIPE_PRICE_ID_ANNUALLY,
       },
       description: "Perfect for growing your newsletter audience",
       features: [
@@ -75,7 +75,7 @@ export default function PricingPage() {
       },
       priceId: {
         monthly: stripeMonthlyPriceId,
-        annually: stripeMonthlyPriceId,
+        annually: import.meta.env.VITE_STRIPE_PRICE_ID_ANNUALLY,
       },
       description: "For professional newsletter creators and teams",
       features: [
