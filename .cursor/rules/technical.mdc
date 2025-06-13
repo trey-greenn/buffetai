@@ -8,20 +8,4 @@ Technical Write-Up: AI Infographic Generator with Layout Control (OpenAI + Next.
 Overview:
 This module adds AI-generated infographic creation to our Next.js app, enhanced with a “Layout Control” component that lets users select a visual structure (timeline, comparison, bar chart, flowchart) before invoking the OpenAI DALL·E 3 image generation API.
 
-Architecture:
-- **Frontend (Next.js + Tailwind):**
-  - `InfographicForm.tsx` includes:
-    - Textarea for prompt/topic input.
-    - `LayoutSelector` component (radio or card UI) offering predefined layout types.
-    - Submit button to trigger image generation.
-  - Live preview of the generated image.
-- **Backend/API Route:**
-  - `/api/generate-infographic` accepts `POST` requests with `{ topic, layout }`.
-  - Constructs a detailed prompt that combines user input with layout-specific descriptors.
-- **Prompt Composition Logic:**
-  ```ts
-  const finalPrompt = `Create a ${layout} infographic about "${topic}" using a clean, flat style...`;
-
-
-
-
+On top of the AI Generated graphic we want to strategically place div boxes with Text Areas where we can insert statistics and important wording.

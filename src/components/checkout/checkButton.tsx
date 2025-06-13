@@ -1,6 +1,7 @@
 import { loadStripe } from '@stripe/stripe-js';
+import { useAuth } from '../../lib/supabase/auth-context';
 
-// You'll need to replace with your actual Stripe publishable key
+// Use the environment variable
 const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE);
 
 interface CheckoutButtonProps {
@@ -9,13 +10,25 @@ interface CheckoutButtonProps {
 }
 
 export default function CheckoutButton({ priceId, productName }: CheckoutButtonProps) {
+  const { user } = useAuth();
+  
+  const handleEnterpriseContact = () => {
+    // Redirect to a contact form or open a modal
+    window.location.href = `mailto:info@williamtreygreen.com?subject=Enterprise Plan Inquiry&body=I'm interested in the Enterprise plan.`;
+  };
+  
   const handleCheckout = async () => {
+    if (productName === "Enterprise") {
+      handleEnterpriseContact();
+      return;
+    }
+    
     try {
       const stripe = await stripePromise;
       if (!stripe) throw new Error('Stripe failed to load');
 
-      // Create checkout session using your existing server
-      const response = await fetch('http://localhost:3000/api/create-checkout-session', {
+      // Use relative URL to work in both development and production
+      const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -23,6 +36,7 @@ export default function CheckoutButton({ priceId, productName }: CheckoutButtonP
         body: JSON.stringify({
           priceId,
           productName,
+          userId: user?.id, // Include user ID to associate with subscription
         }),
       });
 

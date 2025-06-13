@@ -1,119 +1,81 @@
-// test-scheduler-server.js
-import express from 'express';
-import cors from 'cors';
-import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3001; // Use a different port from main server
-
-// Middleware
-app.use(cors());
-app.use(express.json());
+// test-process-existing-emails.js
+const { createClient } = require('@supabase/supabase-js');
+const fetch = require('node-fetch');
+require('dotenv').config();
 
 // Initialize Supabase
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Test endpoint to create a scheduled email
-app.post('/test/schedule-email', async (req, res) => {
-  console.log('🧪 TEST: Schedule email endpoint called');
-  console.log('Request body:', JSON.stringify(req.body));
-  
-  const { 
-    recipient_email = 'test@example.com',
-    user_id = '0af0bba4-248f-49fe-8721-6219ea538bfc',
-    subject = 'Test Email',
-    content = '<p>This is a test email</p>',
-    frequency = 'weekly'
-  } = req.body;
-
-  // Calculate dates
-  const now = new Date();
-  const scheduledDate = new Date(now);
-  const nextDate = new Date(now);
-  
-  switch (frequency) {
-    case 'daily': nextDate.setDate(nextDate.getDate() + 1); break;
-    case 'weekly': nextDate.setDate(nextDate.getDate() + 7); break;
-    case 'bi-weekly': nextDate.setDate(nextDate.getDate() + 14); break;
-    case 'monthly': nextDate.setMonth(nextDate.getMonth() + 1); break;
-    default: nextDate.setDate(nextDate.getDate() + 7);
-  }
-
+async function testProcessExistingEmails() {
   try {
-    // Insert test record
-    const { data, error } = await supabase
+    // Step 1: Check for existing pending emails
+    console.log('Checking for existing pending emails...');
+    const now = new Date();
+    
+    const { data: pendingEmails, error: pendingError } = await supabase
       .from('scheduled_emails')
-      .insert({
-        user_id,
-        recipient_email,
-        email_content: content, // Include both field names for compatibility
-        status: 'pending',
-        scheduled_time: scheduledDate.toISOString(),
-        send_date: scheduledDate.toISOString(), 
-        next_date: nextDate.toISOString(),
-        section_data: [],
-        created_at: now.toISOString()
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('❌ Database error:', error);
-      return res.status(500).json({ 
-        success: false, 
-        error: error.message,
-        details: error
-      });
-    }
-
-    console.log('✅ Test email scheduled successfully:', data);
-    return res.status(201).json({ 
-      success: true,
-      data,
-      message: 'Test email record created successfully'
-    });
-  } catch (error) {
-    console.error('❌ Unexpected error:', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
-  }
-});
-
-// Test endpoint to list all scheduled emails
-app.get('/test/list-emails', async (req, res) => {
-  console.log('🧪 TEST: List emails endpoint called');
-  
-  try {
-    const { data, error } = await supabase
-      .from('scheduled_emails')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .select('id, recipient_email, send_date, subject')
+      .eq('status', 'pending')
+      .lte('send_date', now.toISOString());
       
-    if (error) {
-      return res.status(500).json({ error: error.message });
+    if (pendingError) {
+      throw new Error(`Error fetching pending emails: ${pendingError.message}`);
     }
     
-    return res.status(200).json({ 
-      success: true, 
-      count: data.length,
-      data 
+    console.log(`Found ${pendingEmails.length} emails ready to be sent:`);
+    pendingEmails.forEach(email => {
+      console.log(`- Email ID: ${email.id}, Send date: ${email.send_date}`);
     });
+    
+    if (pendingEmails.length === 0) {
+      console.log('No pending emails found. Test cannot continue.');
+      return;
+    }
+    
+    // Save the IDs of pending emails for later comparison
+    const pendingEmailIds = pendingEmails.map(email => email.id);
+    
+    // Step 2: Trigger the cron job manually
+    console.log('\nTriggering the email processor...');
+    const response = await fetch('http://localhost:3000/api/emails/process-queue', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.CRON_INTERNAL_API_KEY
+      }
+    });
+    
+    const responseData = await response.json();
+    console.log('Email processor response:', responseData);
+    
+    // Step 3: Verify the emails were sent
+    console.log('\nVerifying emails were sent...');
+    const { data: sentEmails, error: sentError } = await supabase
+      .from('scheduled_emails')
+      .select('id, recipient_email, updated_at, subject, status')
+      .in('id', pendingEmailIds);
+      
+    if (sentError) {
+      throw new Error(`Error fetching sent emails: ${sentError.message}`);
+    }
+    
+    console.log('Status of processed emails:');
+    sentEmails.forEach(email => {
+      console.log(`- Email ID: ${email.id}, Status: ${email.status}, Updated at: ${email.updated_at}`);
+    });
+    
+    const allSent = sentEmails.every(email => email.status === 'sent');
+    if (allSent) {
+      console.log('\n✅ SUCCESS: All emails were processed and marked as sent');
+    } else {
+      console.log('\n⚠️ WARNING: Some emails were not marked as sent');
+    }
+    
   } catch (error) {
-    return res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
+    console.error('Error during test:', error);
   }
-});
+}
 
-// Start test server
-app.listen(PORT, () => {
-  console.log(`🧪 TEST SERVER running on port ${PORT}`);
-});
+testProcessExistingEmails();

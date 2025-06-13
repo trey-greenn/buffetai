@@ -359,7 +359,11 @@ app.post('/api/create-checkout-session', async (req, res) => {
     }
   
     try {
-      const { priceId, productName } = req.body;
+      const { priceId, productName, userId } = req.body;
+      
+      if (!priceId) {
+        return res.status(400).json({ error: 'Price ID is required' });
+      }
   
       // Create a checkout session
       const session = await stripe.checkout.sessions.create({
@@ -375,6 +379,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
         cancel_url: `${req.headers.origin}/pricing`,
         metadata: {
           productName,
+          userId, // Store the user ID to associate with subscription later
         },
       });
   
@@ -383,24 +388,72 @@ app.post('/api/create-checkout-session', async (req, res) => {
       console.error('Error creating checkout session:', error);
       res.status(500).json({ error: 'Failed to create checkout session' });
     }
-  });
+});
 
 app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.VITE_STRIPE_WEBHOOK_SECRET;
+  
+  if (!endpointSecret) {
+    console.error('Missing webhook secret');
+    return res.status(500).send('Webhook secret is not configured');
+  }
   
   let event;
   
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
+    console.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
   
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    // Handle successful payment
-    console.log('Payment successful for session:', session.id);
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      
+      try {
+        // Associate customer with user
+        // First get the user ID from the session metadata (add this to your checkout session)
+        const userId = session.metadata.userId;
+        
+        if (!userId) {
+          console.warn('No user ID in session metadata');
+          break;
+        }
+        
+        // Update user subscription status in database
+        const { error } = await supabase
+          .from('profiles')
+          .update({ 
+            subscription_status: 'active',
+            subscription_plan: session.metadata.productName,
+            stripe_customer_id: session.customer,
+            subscription_updated_at: new Date().toISOString()
+          })
+          .eq('id', userId);
+          
+        if (error) {
+          console.error('Error updating user subscription:', error);
+        } else {
+          console.log(`Updated subscription status for user ${userId}`);
+        }
+      } catch (error) {
+        console.error('Error processing webhook:', error);
+      }
+      break;
+      
+    case 'customer.subscription.updated':
+      // Handle subscription updates
+      break;
+      
+    case 'customer.subscription.deleted':
+      // Handle subscription cancellations
+      break;
+      
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
   
   res.status(200).json({received: true});

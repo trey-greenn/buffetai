@@ -22,6 +22,14 @@ export default defineConfig(({ mode }) => {
       // Make all environment variables available at build time
       // This ensures client-side code can access them via import.meta.env
       'process.env': env
+    },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3000',
+          changeOrigin: true,
+        },
+      },
     }
   };
 });

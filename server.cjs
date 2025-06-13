@@ -3,9 +3,9 @@ const cors = require('cors');
 const { Resend } = require('resend');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
-const { processPendingEmails } = require('./dist/lib/scheduler/emailProcessor');
-const { processNewsletterSections } = require('./dist/lib/scheduler/emailProcessor');
-const { processContentCollections } = require('./dist/lib/content/automatedCollector');
+// const { processPendingEmails } = require('./src/lib/scheduler/emailProcessor.ts');
+// const { processNewsletterSections } = require('./src/lib/scheduler/emailProcessor.ts');
+// const { processContentCollections } = require('./src/lib/content/automatedCollector.ts');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -245,22 +245,36 @@ app.post('/api/emails/send', async (req, res) => {
 
 // Process email queue - called by cron
 app.post('/api/emails/process-queue', async (req, res) => {
+  // Log the execution at the start
+  await logCronExecution('process-queue');
+  
   const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.CRON_INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   
   try {
-    await processPendingEmails();
-    res.status(200).json({ success: true });
+    console.log('🔄 Processing pending emails queue');
+    
+    // Call our local implementation of processPendingEmails
+    const results = await processPendingEmails();
+    
+    // Add execution details to the response
+    return res.status(200).json({ 
+      success: true, 
+      processed: results.length,
+      results,
+      execution_time: new Date().toISOString()
+    });
   } catch (error) {
-    console.error('Error processing emails:', error);
-    res.status(500).json({ error: error.message || 'Failed to process emails' });
+    console.error('❌ Error processing emails:', error);
+    return res.status(500).json({ error: error.message || 'Failed to process emails' });
   }
 });
 
 // Process newsletter sections - called by cron
 app.post('/api/newsletters/process-sections', async (req, res) => {
+  await logCronExecution('process-sections');
   const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.CRON_INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -277,6 +291,7 @@ app.post('/api/newsletters/process-sections', async (req, res) => {
 
 // Collect content - called by cron
 app.post('/api/content/collect-all', async (req, res) => {
+  await logCronExecution('collect-content');
   const apiKey = req.headers['x-api-key'];
   if (apiKey !== process.env.CRON_INTERNAL_API_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -291,6 +306,135 @@ app.post('/api/content/collect-all', async (req, res) => {
   }
 });
 
+// Add this to server.cjs
+app.get('/api/cron/health', async (req, res) => {
+  try {
+    // Get the last 5 cron job executions
+    const { data, error } = await supabase
+      .from('cron_executions')  // Create this table in your database
+      .select('*')
+      .order('executed_at', { ascending: false })
+      .limit(5);
+      
+    if (error) throw error;
+    
+    // Check if any emails were processed in the last 24 hours
+    const { data: emailsProcessed, error: emailsError } = await supabase
+      .from('scheduled_emails')
+      .select('count')
+      .eq('status', 'sent')
+      .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+      
+    return res.status(200).json({
+      status: 'healthy',
+      last_executions: data,
+      emails_processed_24h: emailsProcessed,
+      current_time: new Date().toISOString()
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Create a function to log cron executions
+async function logCronExecution(jobName, status = 'completed', details = {}) {
+  try {
+    await supabase.from('cron_executions').insert({
+      job_name: jobName,
+      executed_at: new Date().toISOString(),
+      status,
+      details
+    });
+  } catch (error) {
+    console.error(`Failed to log cron execution: ${error.message}`);
+  }
+}
+
+// Add this to server.cjs
+app.post('/api/test/cron-email', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== process.env.CRON_INTERNAL_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Create a test email scheduled to send 1 minute from now
+    const now = new Date();
+    const sendDate = new Date(now.getTime() + 60 * 1000); // 1 minute from now
+    
+    const { data, error } = await supabase
+      .from('scheduled_emails')
+      .insert({
+        user_id: req.body.user_id || '0af0bba4-248f-49fe-8721-6219ea538bfc',
+        recipient_email: req.body.email || 'test@example.com',
+        subject: 'CRON TEST - ' + now.toISOString(),
+        email_content: `<p>This is a test email to verify cron jobs are working. Created at ${now.toISOString()}</p>`,
+        status: 'pending',
+        scheduled_time: now.toISOString(),
+        send_date: sendDate.toISOString(),
+        next_date: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week later
+        created_at: now.toISOString()
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Test email scheduled',
+      email: data,
+      should_send_at: sendDate.toISOString()
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a simple admin endpoint to view recent cron activities
+app.get('/api/admin/cron-activity', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== process.env.ADMIN_API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Get recent executions grouped by job
+    const { data, error } = await supabase
+      .from('cron_executions')
+      .select('*')
+      .order('executed_at', { ascending: false })
+      .limit(30);
+    
+    if (error) throw error;
+    
+    // Group by job name
+    const groupedByJob = {};
+    data.forEach(execution => {
+      if (!groupedByJob[execution.job_name]) {
+        groupedByJob[execution.job_name] = [];
+      }
+      groupedByJob[execution.job_name].push(execution);
+    });
+    
+    // Get pending email stats
+    const { data: pendingData, error: pendingError } = await supabase
+      .from('scheduled_emails')
+      .select('count')
+      .eq('status', 'pending');
+      
+    if (pendingError) throw pendingError;
+    
+    return res.status(200).json({
+      job_executions: groupedByJob,
+      pending_emails: pendingData[0]?.count || 0,
+      server_time: new Date().toISOString()
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 // For local development
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => {
@@ -300,3 +444,138 @@ if (process.env.NODE_ENV !== 'production') {
 
 // Export for Vercel serverless functions
 module.exports = app;
+
+// Add this function after your import statements
+async function processPendingEmails() {
+  try {
+    const now = new Date();
+    
+    // Find emails that need to be sent (send_date has passed)
+    const { data: emailsToSend, error } = await supabase
+      .from('scheduled_emails')
+      .select('*')
+      .eq('status', 'pending')
+      .lte('send_date', now.toISOString());
+      
+    if (error) {
+      console.error('Error fetching emails to send:', error);
+      return [];
+    }
+    
+    console.log(`Found ${emailsToSend?.length || 0} emails to send`);
+    
+    const results = [];
+    
+    // Process each email
+    for (const email of emailsToSend || []) {
+      try {
+        console.log(`Processing email ${email.id}`);
+        
+        // Extract email content
+        const emailContent = email.email_content || email.content;
+        
+        if (!emailContent || !email.recipient_email) {
+          console.log(`❌ Missing content or recipient for email ${email.id}`);
+          results.push({ id: email.id, success: false, reason: 'Missing content or recipient' });
+          continue;
+        }
+        
+        // Send the email directly using Resend
+        const { data, error: sendError } = await resend.emails.send({
+          from: 'Newsletter <info@williamtreygreen.com>',
+          to: email.recipient_email,
+          subject: email.subject || 'Your Personalized Newsletter',
+          html: emailContent
+        });
+        
+        if (sendError) {
+          console.log(`❌ Error sending email ${email.id}:`, sendError);
+          results.push({ id: email.id, success: false, error: sendError });
+          continue;
+        }
+        
+        // Update status to sent
+        const { error: updateError } = await supabase
+          .from('scheduled_emails')
+          .update({ status: 'sent' })
+          .eq('id', email.id);
+          
+        if (updateError) {
+          console.log(`❌ Error updating email status ${email.id}:`, updateError);
+          results.push({ id: email.id, success: true, updateError: true });
+          continue;
+        }
+        
+        // Schedule next email
+        await scheduleNextEmail(email);
+        
+        console.log(`✅ Processed email ${email.id} successfully`);
+        results.push({ 
+          id: email.id, 
+          success: true, 
+          nextScheduled: true
+        });
+      } catch (err) {
+        console.error(`❌ Error processing email ${email.id}:`, err);
+        results.push({ id: email.id, success: false, error: err.message });
+      }
+    }
+    
+    return results;
+  } catch (error) {
+    console.error('Error in processPendingEmails:', error);
+    return [];
+  }
+}
+
+// Add this function after processPendingEmails
+async function scheduleNextEmail(email) {
+  try {
+    const userId = email.user_id;
+    const now = new Date();
+    
+    // Use the next_date from the email as the new send_date
+    const nextSendDate = new Date(email.next_date || now);
+    let nextNextDate = new Date(nextSendDate);
+    
+    // Calculate the next-next date based on frequency
+    const frequency = email.frequency || 'weekly';
+    switch (frequency) {
+      case 'daily': nextNextDate.setDate(nextNextDate.getDate() + 1); break;
+      case 'weekly': nextNextDate.setDate(nextNextDate.getDate() + 7); break;
+      case 'bi-weekly': nextNextDate.setDate(nextNextDate.getDate() + 14); break;
+      case 'monthly': nextNextDate.setMonth(nextNextDate.getMonth() + 1); break;
+      default: nextNextDate.setDate(nextNextDate.getDate() + 7); // Default to weekly
+    }
+    
+    // Create next scheduled email
+    const { data: newEmail, error: scheduleError } = await supabase
+      .from('scheduled_emails')
+      .insert({
+        user_id: email.user_id,
+        recipient_email: email.recipient_email,
+        subject: email.subject,
+        email_content: email.email_content || email.content,
+        status: 'pending',
+        scheduled_time: nextSendDate.toISOString(),
+        send_date: nextSendDate.toISOString(),
+        next_date: nextNextDate.toISOString(),
+        section_data: email.section_data || [],
+        frequency: frequency,
+        created_at: now.toISOString()
+      })
+      .select('id');
+      
+    if (scheduleError) {
+      console.log('⚠️ Failed to schedule next email:', scheduleError);
+      return false;
+    } else {
+      console.log('✅ Next email scheduled successfully for:', nextSendDate.toISOString());
+      return true;
+    }
+  } catch (error) {
+    console.error('Error in scheduleNextEmail:', error);
+    console.error('Email data:', JSON.stringify(email));
+    return false;
+  }
+}
