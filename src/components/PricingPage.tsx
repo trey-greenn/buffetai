@@ -47,27 +47,6 @@ export default function PricingPage() {
       cta: "Get Started"
     },
     {
-      name: "Pro",
-      price: {
-        monthly: 9.99,
-        annually: 99.99,
-      },
-      priceId: {
-        monthly: stripeMonthlyPriceId,
-        annually: import.meta.env.VITE_STRIPE_PRICE_ID_ANNUALLY,
-      },
-      description: "Perfect for growing your newsletter audience",
-      features: [
-        "5 newsletters per month",
-        "Advanced research assistant",
-        "3 infographics per month",
-        "Priority email support",
-        "Newsletter analytics"
-      ],
-      cta: "Get Pro",
-      popular: true
-    },
-    {
       name: "Enterprise",
       price: {
         monthly: 29.99,
@@ -140,7 +119,7 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing tiers */}
-        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-3 sm:gap-6 lg:max-w-5xl lg:mx-auto xl:max-w-none">
+        <div className="mt-12 space-y-4 sm:mt-16 sm:space-y-0 sm:grid sm:grid-cols-2 sm:gap-6 lg:max-w-4xl lg:mx-auto xl:max-w-none xl:grid-cols-2 xl:mx-auto xl:max-w-4xl">
           {pricingTiers.map((tier) => (
             <div
               key={tier.name}

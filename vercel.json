@@ -54,20 +54,8 @@
     ],
     "crons": [
       {
-        "path": "/api/emails/process-queue",
-        "schedule": "*/10 * * * *"
-      },
-      {
-        "path": "/api/content/collect-all",
-        "schedule": "0 2 * * *"
-      },
-      {
-        "path": "/api/newsletters/process-sections",
-        "schedule": "0 0 * * *"
-      },
-      {
-        "path": "/api/cron-heartbeat",
-        "schedule": "*/5 * * * *"
+        "path": "/api/daily-tasks",
+        "schedule": "0 12 * * *"
       }
     ]
   }

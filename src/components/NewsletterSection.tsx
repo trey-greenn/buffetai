@@ -15,6 +15,12 @@ interface NewsletterSectionData {
   other: string;
 }
 
+const getDefaultStartDate = (): string => {
+  const date = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  date.setHours(8, 0, 0, 0); // Set to 8:00:00 AM
+  return date.toISOString().slice(0, 16);
+};
+
 const NewsletterSection: React.FC = () => {
   const { user } = useAuth();
   const [sections, setSections] = useState<NewsletterSectionData[]>([
@@ -22,8 +28,8 @@ const NewsletterSection: React.FC = () => {
       id: '1',
       topic: '',
       instructions: '',
-      frequency: 'weekly',
-      startDate: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+      frequency: 'daily',
+      startDate: getDefaultStartDate(),
       sendDate: '',
       other: '',
     },
@@ -74,10 +80,7 @@ const NewsletterSection: React.FC = () => {
   ];
 
   const frequencyOptions = [
-    'daily',
-    'weekly',
-    'bi-weekly',
-    'monthly',
+    'daily'
   ];
 
   const calculateSendDate = (startDate: string, frequency: string): string => {
@@ -87,16 +90,10 @@ const NewsletterSection: React.FC = () => {
     
     switch (frequency) {
       case 'daily':
+      default:
         date.setDate(date.getDate() + 1);
-        break;
-      case 'weekly':
-        date.setDate(date.getDate() + 7);
-        break;
-      case 'bi-weekly':
-        date.setDate(date.getDate() + 14);
-        break;
-      case 'monthly':
-        date.setMonth(date.getMonth() + 1);
+        // Ensure time remains at 8:00 AM
+        date.setHours(8, 0, 0, 0);
         break;
     }
     
@@ -104,14 +101,14 @@ const NewsletterSection: React.FC = () => {
   };
 
   const addNewSection = () => {
-    const startDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+    const startDate = getDefaultStartDate();
     const newSection = {
       id: Date.now().toString(),
       topic: '',
       instructions: '',
-      frequency: 'weekly',
+      frequency: 'daily',
       startDate,
-      sendDate: calculateSendDate(startDate, 'weekly'),
+      sendDate: calculateSendDate(startDate, 'daily'),
       other: '',
     };
     
@@ -129,12 +126,21 @@ const NewsletterSection: React.FC = () => {
       sections.map(section => {
         if (section.id !== id) return section;
         
-        const updatedSection = { ...section, [field]: value };
+        let updatedValue = value;
+        
+        // If updating startDate, ensure time is set to 8:00 AM
+        if (field === 'startDate') {
+          const date = new Date(value);
+          date.setHours(8, 0, 0, 0);
+          updatedValue = date.toISOString().slice(0, 16);
+        }
+        
+        const updatedSection = { ...section, [field]: updatedValue };
         
         if (field === 'frequency' || field === 'startDate') {
           updatedSection.sendDate = calculateSendDate(
-            field === 'startDate' ? value : section.startDate,
-            field === 'frequency' ? value : section.frequency
+            field === 'startDate' ? updatedValue : section.startDate,
+            field === 'frequency' ? updatedValue : section.frequency
           );
         }
         
@@ -235,21 +241,19 @@ const NewsletterSection: React.FC = () => {
                 <label htmlFor={`topic-${section.id}`} className="block text-sm font-medium text-gray-700 mb-1">
                   Topic
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    id={`topic-${section.id}`}
-                    value={section.topic}
-                    onChange={(e) => updateSection(section.id, 'topic', e.target.value)}
-                    list={`topics-list-${section.id}`}
-                    className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                    placeholder="Search or enter a topic..." />
-                  <datalist id={`topics-list-${section.id}`}>
-                    {predefinedTopics.map((topic) => (
-                      <option key={topic} value={topic} />
-                    ))}
-                  </datalist>
-                </div>
+                <select
+                  id={`topic-${section.id}`}
+                  value={section.topic}
+                  onChange={(e) => updateSection(section.id, 'topic', e.target.value)}
+                  className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                >
+                  <option value="">Select a topic</option>
+                  {predefinedTopics.map((topic) => (
+                    <option key={topic} value={topic}>
+                      {topic}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
@@ -288,14 +292,14 @@ const NewsletterSection: React.FC = () => {
                   Send Date
                 </label>
                 <input
-                  type="datetime-local"
+                  type="date"
                   id={`startDate-${section.id}`}
-                  value={section.startDate}
-                  onChange={(e) => updateSection(section.id, 'startDate', e.target.value)}
+                  value={section.startDate.slice(0, 10)}
+                  onChange={(e) => updateSection(section.id, 'startDate', `${e.target.value}T08:00`)}
                   className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  When do you want this newsletter to be sent? (Eastern Time - NYC)
+                  Newsletter will be sent at 8:00 AM EST on the selected date
                 </p>
               </div>
 
