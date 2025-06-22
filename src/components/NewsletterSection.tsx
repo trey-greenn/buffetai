@@ -241,10 +241,10 @@ const NewsletterSection: React.FC = () => {
                     id={`topic-${section.id}`}
                     value={section.topic}
                     onChange={(e) => updateSection(section.id, 'topic', e.target.value)}
-                    list={`topics-${section.id}`}
+                    list={`topics-list-${section.id}`}
                     className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                     placeholder="Search or enter a topic..." />
-                  <datalist id={`topics-${section.id}`}>
+                  <datalist id={`topics-list-${section.id}`}>
                     {predefinedTopics.map((topic) => (
                       <option key={topic} value={topic} />
                     ))}

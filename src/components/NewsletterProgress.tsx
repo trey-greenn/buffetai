@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase/client';
 import { useAuth } from '../lib/supabase/auth-context';
-import { Calendar, Clock, RefreshCw, CheckCircle, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, RefreshCw, CheckCircle, ArrowRight, ChevronDown, ChevronUp, Mail } from 'lucide-react';
 import { formatToEasternTime } from '../lib/utils/dateUtils';
 
 interface ContentItem {
@@ -9,8 +9,6 @@ interface ContentItem {
   title: string;
   topic: string;
 }
-
-
 
 interface ScheduledEmail {
   id: string;
@@ -22,7 +20,8 @@ interface ScheduledEmail {
   section_ids: string[];
   title?: string;
   content_summary?: string[];
-  email_content?: { items: ContentItem[] };
+  email_content?: { items: ContentItem[] } | string;
+  full_content?: string;
   section_data?: { topic: string };
 }
 
@@ -33,6 +32,7 @@ const NewsletterProgress: React.FC = () => {
   const [currentEmails, setCurrentEmails] = useState<ScheduledEmail[]>([]);
   const [pastEmails, setPastEmails] = useState<ScheduledEmail[]>([]);
   const [articles, setArticles] = useState<Record<string, ContentItem[]>>({});
+  const [expandedEmails, setExpandedEmails] = useState<Record<string, boolean>>({});
   
   useEffect(() => {
     if (user) {
@@ -50,7 +50,7 @@ const NewsletterProgress: React.FC = () => {
         .from('scheduled_emails')
         .select('*')
         .eq('user_id', user?.id)
-        .order('send_date', { ascending: true });
+        .order('send_date', { ascending: false });
         
       if (emailsError) throw emailsError;
       
@@ -68,7 +68,7 @@ const NewsletterProgress: React.FC = () => {
           current.push(email);
           
           // If email has content, extract it directly
-          if (email.email_content && email.email_content.items) {
+          if (email.email_content && typeof email.email_content === 'object' && email.email_content.items) {
             console.log("Found email_content for email:", email.id);
             contentMap[email.id] = email.email_content.items;
           }
@@ -104,6 +104,26 @@ const NewsletterProgress: React.FC = () => {
       setError(err.message || 'Failed to load data');
       setLoading(false);
     }
+  };
+  
+  const toggleEmailExpanded = (emailId: string) => {
+    setExpandedEmails(prev => ({
+      ...prev,
+      [emailId]: !prev[emailId]
+    }));
+  };
+  
+  // Function to safely get email content
+  const getEmailContent = (email: ScheduledEmail): string => {
+    if (email.full_content) {
+      return email.full_content as string;
+    }
+    
+    if (typeof email.email_content === 'string') {
+      return email.email_content;
+    }
+    
+    return 'No content available';
   };
   
   if (loading) {
@@ -236,14 +256,24 @@ const NewsletterProgress: React.FC = () => {
                       Sent on {formatToEasternTime(email.send_date)}
                     </p>
                   </div>
-                  <div className="mt-2 md:mt-0">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <div className="flex items-center mt-2 md:mt-0">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2">
                       Sent
                     </span>
+                    <button 
+                      onClick={() => toggleEmailExpanded(email.id)}
+                      className="text-gray-500 hover:text-indigo-600"
+                      aria-label={expandedEmails[email.id] ? "Collapse email" : "Expand email"}
+                    >
+                      {expandedEmails[email.id] ? 
+                        <ChevronUp className="h-5 w-5" /> : 
+                        <ChevronDown className="h-5 w-5" />
+                      }
+                    </button>
                   </div>
                 </div>
                 
-                {email.content_summary && email.content_summary.length > 0 && (
+                {!expandedEmails[email.id] && email.content_summary && email.content_summary.length > 0 && (
                   <div className="mt-3">
                     <p className="text-sm font-medium text-gray-700">Articles:</p>
                     <ul className="mt-1 space-y-1">
@@ -259,6 +289,20 @@ const NewsletterProgress: React.FC = () => {
                         </li>
                       )}
                     </ul>
+                  </div>
+                )}
+                
+                {/* Full Email Content */}
+                {expandedEmails[email.id] && (
+                  <div className="mt-4 border-t pt-4">
+                    <div className="flex items-center mb-3">
+                      <Mail className="h-5 w-5 text-indigo-500 mr-2" />
+                      <h4 className="font-medium text-gray-800">Full Newsletter Content</h4>
+                    </div>
+                    <div 
+                      className="bg-white p-4 rounded-md border border-gray-200 max-h-[500px] overflow-y-auto"
+                      dangerouslySetInnerHTML={{ __html: getEmailContent(email) }}
+                    />
                   </div>
                 )}
               </div>
