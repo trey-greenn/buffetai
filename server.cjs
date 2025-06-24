@@ -3,6 +3,8 @@ const cors = require('cors');
 const { Resend } = require('resend');
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
+const axios = require('axios');
+const { OpenAI } = require('openai');
 // const { processPendingEmails } = require('./src/lib/scheduler/emailProcessor.ts');
 // const { processNewsletterSections } = require('./src/lib/scheduler/emailProcessor.ts');
 // const { processContentCollections } = require('./src/lib/content/automatedCollector.ts');
@@ -23,6 +25,10 @@ const resend = new Resend(process.env.VITE_RESEND_API_KEY);
 const supabaseUrl = process.env.VITE_SUPABASE_URL;
 const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Initialize OpenAI
+const openai = new OpenAI(process.env.VITE_OPENAI_API_KEY);
+const newsApiKey = process.env.VITE_NEWS_API_KEY;
 
 // Email sending endpoint
 app.post('/api/send-email', async (req, res) => {
@@ -507,13 +513,14 @@ async function processPendingEmails() {
         }
         
         // Schedule next email
-        await scheduleNextEmail(email);
+        const scheduleResult = await scheduleNextEmail(email);
         
         console.log(`✅ Processed email ${email.id} successfully`);
         results.push({ 
           id: email.id, 
           success: true, 
-          nextScheduled: true
+          nextScheduled: scheduleResult.success,
+          newEmailId: scheduleResult.newEmailId
         });
       } catch (err) {
         console.error(`❌ Error processing email ${email.id}:`, err);
@@ -568,14 +575,132 @@ async function scheduleNextEmail(email) {
       
     if (scheduleError) {
       console.log('⚠️ Failed to schedule next email:', scheduleError);
-      return false;
+      return { success: false };
     } else {
       console.log('✅ Next email scheduled successfully for:', nextSendDate.toISOString());
-      return true;
+      return { success: true, newEmailId: newEmail.id };
     }
   } catch (error) {
     console.error('Error in scheduleNextEmail:', error);
     console.error('Email data:', JSON.stringify(email));
-    return false;
+    return { success: false };
   }
 }
+
+// Function to fetch news content from News API
+async function fetchNewsContent() {
+  try {
+    const response = await axios.get('https://newsapi.org/v2/top-headlines', {
+      params: {
+        country: 'us',
+        apiKey: newsApiKey
+      }
+    });
+    
+    return response.data.articles.slice(0, 5); // Get top 5 articles
+  } catch (error) {
+    console.error('Error fetching news:', error);
+    return [];
+  }
+}
+
+// Function to generate newsletter content using OpenAI
+async function generateNewsletterContent(newsArticles) {
+  if (!newsArticles || newsArticles.length === 0) {
+    return '<p>No news content available for today.</p>';
+  }
+  
+  try {
+    // Format the news articles for the prompt
+    const articlesText = newsArticles.map((article, index) => 
+      `${index + 1}. ${article.title}\nSource: ${article.source.name}\nSummary: ${article.description || 'No description available'}`
+    ).join('\n\n');
+    
+    // Generate content with OpenAI
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a newsletter writer. Create a concise, engaging HTML newsletter based on the provided news articles. Include a brief introduction, summaries of each article with your insights, and a conclusion. Format with proper HTML tags."
+        },
+        {
+          role: "user",
+          content: `Generate a daily newsletter based on these top news stories:\n\n${articlesText}`
+        }
+      ]
+    });
+    
+    return completion.choices[0].message.content;
+  } catch (error) {
+    console.error('Error generating newsletter with OpenAI:', error);
+    // Fallback content if OpenAI fails
+    return `
+      <h2>Today's Top News</h2>
+      ${newsArticles.map(article => `
+        <div>
+          <h3>${article.title}</h3>
+          <p><strong>Source:</strong> ${article.source.name}</p>
+          <p>${article.description || 'No description available'}</p>
+          ${article.url ? `<p><a href="${article.url}" target="_blank">Read more</a></p>` : ''}
+        </div>
+      `).join('<hr>')}
+    `;
+  }
+}
+
+// Add this API endpoint for daily-tasks to use directly
+app.post('/api/daily-tasks', async (req, res) => {
+  if (req.headers['x-vercel-cron'] !== '1') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  try {
+    console.log('Starting daily tasks: content collection and email updates');
+    
+    // 1. Log execution in our monitoring table
+    await supabase
+      .from('cron_heartbeat')
+      .insert([{ timestamp: new Date().toISOString() }]);
+    
+    // 2. Process pending emails
+    const emailResults = await processPendingEmails();
+    
+    // 3. For each processed email, generate new content for tomorrow
+    for (const result of emailResults) {
+      if (result.success && result.nextScheduled) {
+        try {
+          // Get the newly scheduled email
+          const { data: newEmail } = await supabase
+            .from('scheduled_emails')
+            .select('*')
+            .eq('id', result.newEmailId)
+            .single();
+            
+          if (newEmail) {
+            // Generate fresh content
+            const newsContent = await fetchNewsContent();
+            const newsletterHtml = await generateNewsletterContent(newsContent);
+            
+            // Update the pending email with the fresh content
+            await supabase
+              .from('scheduled_emails')
+              .update({ email_content: newsletterHtml })
+              .eq('id', newEmail.id);
+          }
+        } catch (err) {
+          console.error('Error updating next email content:', err);
+        }
+      }
+    }
+    
+    return res.status(200).json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      emails_processed: emailResults.length
+    });
+  } catch (error) {
+    console.error('Daily tasks error:', error);
+    return res.status(500).json({ error: error.message });
+  }
+});
